@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "@phosphor-icons/react"
 import { AnimatedCards } from "@/components/animated-cards"
@@ -37,10 +38,12 @@ export default function Page() {
 
           <div className="flex items-center gap-4">
             <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">Sign in</button>
-            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-              Get Started
-              <ArrowRight className="ml-1 h-3.5 w-3.5" />
-            </Button>
+            <Link href="/interview">
+              <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                Get Started
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -58,10 +61,12 @@ export default function Page() {
         </p>
 
         <div className="mt-10 flex items-center justify-center gap-4">
-          <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 px-6">
-            Get Started
-            <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
+          <Link href="/interview">
+            <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 px-6">
+              Get Started
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </Link>
           <Button size="lg" variant="secondary" className="px-6">
             Why Peprin
           </Button>
