@@ -6,7 +6,6 @@ import { motion } from "framer-motion"
 import {
   ArrowLeft,
   Mic,
-  MicOff,
   Loader2,
   Sparkles,
   ArrowRight,
@@ -15,7 +14,6 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { BarVisualizer, type AgentState as BarAgentState } from "@/components/ui/bar-visualizer"
 import { Orb, type AgentState } from "@/components/ui/orb"
 import {
   Conversation,
@@ -41,7 +39,7 @@ interface ChatMessage {
   content: string
 }
 
-type EngineStatus = "idle" | "starting" | "greeting" | "waiting" | "thinking" | "responding" | "error"
+type EngineStatus = "idle" | "starting" | "greeting" | "ready_to_speak" | "waiting" | "thinking" | "responding" | "error"
 
 function mapToOrbState(status: EngineStatus): AgentState {
   switch (status) {
@@ -57,21 +55,6 @@ function mapToOrbState(status: EngineStatus): AgentState {
   }
 }
 
-function mapToBarState(status: EngineStatus): BarAgentState {
-  switch (status) {
-    case "starting":
-      return "connecting"
-    case "waiting":
-      return "listening"
-    case "thinking":
-      return "thinking"
-    case "responding":
-      return "speaking"
-    default:
-      return "listening"
-  }
-}
-
 export default function InterviewPage() {
   const router = useRouter()
   const [step, setStep] = useState<"name" | "personality" | "interview">("name")
@@ -81,7 +64,6 @@ export default function InterviewPage() {
   const [selectedPersonality, setSelectedPersonality] = useState<Personality | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [engineStatus, setEngineStatus] = useState<EngineStatus>("idle")
-  const [isMuted, setIsMuted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [interimText, setInterimText] = useState("")
@@ -91,7 +73,6 @@ export default function InterviewPage() {
   const sessionRef = useRef<VoiceSession | null>(null)
   const isActiveRef = useRef(false)
   const engineStatusRef = useRef<EngineStatus>("idle")
-  const muteRef = useRef(false)
   const restartCountRef = useRef(0)
 
   const updateStatus = useCallback((s: EngineStatus) => {
@@ -102,7 +83,7 @@ export default function InterviewPage() {
   const cleanupAll = useCallback(() => {
     isActiveRef.current = false
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop() } catch {}
+      try { recognitionRef.current.abort() } catch {}
       recognitionRef.current = null
     }
     if (mediaStreamRef.current) {
@@ -111,6 +92,13 @@ export default function InterviewPage() {
     }
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel()
+    }
+  }, [])
+
+  const killMic = useCallback(() => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort() } catch {}
+      recognitionRef.current = null
     }
   }, [])
 
@@ -130,7 +118,6 @@ export default function InterviewPage() {
       console.log("[speak] ElevenLabs failed, trying browser TTS:", e)
     }
 
-    // Fallback to browser TTS
     if (typeof window === "undefined" || !window.speechSynthesis) {
       console.log("[speak] No TTS available")
       return
@@ -174,13 +161,15 @@ export default function InterviewPage() {
     async (text: string) => {
       if (!sessionRef.current || !text) return
 
+      killMic()
+      updateStatus("thinking")
+
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         role: "user",
         content: text,
       }
       setMessages((prev) => [...prev, userMessage])
-      updateStatus("thinking")
       console.log("[chat] Sending to backend:", text.slice(0, 80))
 
       try {
@@ -203,23 +192,27 @@ export default function InterviewPage() {
 
         console.log("[chat] Got response:", fullResponse.slice(0, 80))
 
-        if (isActiveRef.current && !muteRef.current) {
-          updateStatus("responding")
-          await speakText(fullResponse)
-
-          if (isActiveRef.current && !muteRef.current) {
-            startRecognitionRef.current()
-          } else {
-            updateStatus("idle")
-          }
+        if (!isActiveRef.current) {
+          updateStatus("idle")
+          return
         }
+
+        updateStatus("responding")
+        await speakText(fullResponse)
+
+        if (!isActiveRef.current) {
+          updateStatus("idle")
+          return
+        }
+
+        updateStatus("ready_to_speak")
       } catch (err) {
         console.error("[chat] Failed:", err)
         setError("Failed to get response. Check if backend is running.")
         updateStatus("idle")
       }
     },
-    [speakText, updateStatus]
+    [speakText, updateStatus, killMic]
   )
 
   const handleUserSpeechRef = useRef(handleUserSpeech)
@@ -228,6 +221,11 @@ export default function InterviewPage() {
   }, [handleUserSpeech])
 
   const startRecognition = useCallback(() => {
+    if (engineStatusRef.current !== "waiting") {
+      console.log("[recognition] Blocked: not in waiting state, current=", engineStatusRef.current)
+      return
+    }
+
     console.log("[recognition] Starting...")
 
     const SpeechRecognitionClass =
@@ -240,6 +238,8 @@ export default function InterviewPage() {
       updateStatus("idle")
       return
     }
+
+    killMic()
 
     const recognition = new SpeechRecognitionClass()
     recognition.continuous = false
@@ -269,15 +269,13 @@ export default function InterviewPage() {
         setError("Microphone denied. Please allow mic access and reload.")
         updateStatus("idle")
       }
-      if (err.error === "aborted") {
-        // Intentional stop — do nothing, onend will handle
-      }
     }
 
     recognition.onend = () => {
       console.log("[recognition] Ended, final:", finalTranscript.trim().slice(0, 50))
 
-      if (!isActiveRef.current || muteRef.current) return
+      if (!isActiveRef.current) return
+      if (engineStatusRef.current !== "waiting") return
 
       const spoken = finalTranscript.trim()
       if (spoken) {
@@ -287,7 +285,6 @@ export default function InterviewPage() {
       } else if (restartCountRef.current < 3) {
         console.log("[recognition] No speech, restart attempt", restartCountRef.current + 1)
         restartCountRef.current++
-        updateStatus("waiting")
         try {
           recognitionRef.current = null
           const newRec = new SpeechRecognitionClass()
@@ -314,22 +311,19 @@ export default function InterviewPage() {
     restartCountRef.current = 0
     try {
       recognition.start()
-      updateStatus("waiting")
       console.log("[recognition] Started, waiting for speech...")
     } catch (e) {
       console.log("[recognition] Start failed:", e)
       updateStatus("idle")
     }
-  }, [updateStatus])
+  }, [updateStatus, killMic])
 
   useEffect(() => {
     startRecognitionRef.current = startRecognition
   }, [startRecognition])
 
-  const beginInterview = useCallback(async () => {
-    // Guard against double-call
-    if (engineStatusRef.current !== "idle" && engineStatusRef.current !== "error") {
-      console.log("[interview] Already active, ignoring click")
+  const requestMicAndListen = useCallback(async () => {
+    if (engineStatusRef.current !== "ready_to_speak" && engineStatusRef.current !== "idle") {
       return
     }
 
@@ -338,54 +332,58 @@ export default function InterviewPage() {
     console.log("[interview] Requesting mic...")
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      })
       mediaStreamRef.current = stream
       isActiveRef.current = true
       console.log("[interview] Mic granted")
-
-      const s = sessionRef.current
-      console.log("[interview] Session:", s)
-      if (!s?.greeting) {
-        console.log("[interview] Session or greeting missing", s)
-        setError("Session not found. Please go back and try again.")
-        updateStatus("idle")
-        return
-      }
-
-      updateStatus("greeting")
-      const greeting = s.greeting
-      console.log("[interview] Speaking greeting:", greeting.slice(0, 80))
-      await speakText(greeting)
-
-      if (isActiveRef.current && !muteRef.current) {
-        startRecognitionRef.current()
-      } else {
-        updateStatus("idle")
-      }
     } catch (err) {
       console.error("[interview] Mic denied:", err)
       setError("Microphone access is required for voice interview.")
-      updateStatus("idle")
+      updateStatus("ready_to_speak")
+      return
     }
-  }, [speakText, updateStatus])
 
-  const handleToggleMute = useCallback(() => {
-    setIsMuted((prev) => {
-      const newMuted = !prev
-      muteRef.current = newMuted
-      if (newMuted) {
-        if (recognitionRef.current) {
-          try { recognitionRef.current.stop() } catch {}
-          recognitionRef.current = null
-        }
-        window.speechSynthesis?.cancel()
-        updateStatus("idle")
-      } else if (isActiveRef.current && engineStatusRef.current === "idle") {
-        startRecognitionRef.current()
-      }
-      return newMuted
-    })
+    await new Promise((r) => setTimeout(r, 300))
+    if (!isActiveRef.current) return
+
+    updateStatus("waiting")
+    startRecognitionRef.current()
   }, [updateStatus])
+
+  const beginInterview = useCallback(async () => {
+    if (engineStatusRef.current !== "idle" && engineStatusRef.current !== "error") {
+      console.log("[interview] Already active, ignoring click")
+      return
+    }
+
+    setError(null)
+    updateStatus("starting")
+    isActiveRef.current = true
+
+    const s = sessionRef.current
+    console.log("[interview] Session:", s)
+    if (!s?.greeting) {
+      console.log("[interview] Session or greeting missing", s)
+      setError("Session not found. Please go back and try again.")
+      updateStatus("idle")
+      isActiveRef.current = false
+      return
+    }
+
+    updateStatus("greeting")
+    console.log("[interview] Speaking greeting:", s.greeting.slice(0, 80))
+    await speakText(s.greeting)
+    console.log("[interview] Greeting finished")
+
+    if (!isActiveRef.current) {
+      updateStatus("idle")
+      return
+    }
+
+    updateStatus("ready_to_speak")
+  }, [speakText, updateStatus])
 
   const handleEndCall = useCallback(async () => {
     cleanupAll()
@@ -656,243 +654,130 @@ export default function InterviewPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b border-border/50">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleEndCall}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">Exit</span>
-          </button>
-          {sessionRef.current && (
-            <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-green-500" />
-              {sessionRef.current.personality_name}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Orb className="h-8 w-8" agentState={mapToOrbState(engineStatus)} />
-            {engineStatus === "responding" && (
-              <div className="absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full animate-pulse" />
-            )}
-            {engineStatus === "waiting" && (
-              <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full animate-pulse" />
-            )}
-          </div>
-          <span className="text-sm font-medium hidden sm:inline">
-            {engineStatus === "waiting"
-              ? "Listening..."
-              : engineStatus === "responding"
-                ? "Speaking..."
-                : engineStatus === "thinking"
-                  ? "Thinking..."
-                  : engineStatus === "starting"
-                    ? "Connecting..."
-                    : engineStatus === "greeting"
-                      ? "Greeting..."
-                      : engineStatus === "idle"
-                        ? isMuted
-                          ? "Muted"
-                          : "Ready"
-                        : "AI Interviewer"}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleToggleMute}
-            className="h-10 w-10"
-          >
-            {isMuted ? <MicOff className="h-5 w-5 text-destructive" /> : <Mic className="h-5 w-5" />}
-          </Button>
-        </div>
+      <div className="p-4">
+        <button
+          onClick={handleEndCall}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="text-sm">Exit</span>
+        </button>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-0">
-        <div className="lg:col-span-2 flex flex-col">
-          <div className="flex-1 relative">
-            <Conversation className="h-full">
-              <ConversationContent>
-                {messages.length === 0 ? (
-                  <ConversationEmptyState
-                    icon={<Orb className="size-16" agentState="listening" />}
-                    title={`Welcome, ${name}!`}
-                    description="Your voice interview is about to begin..."
-                  />
-                ) : (
-                  <>
-                    {messages.map((message) => (
-                      <Message from={message.role} key={message.id}>
-                        <MessageContent>
-                          <Response>{message.content}</Response>
-                        </MessageContent>
-                        {message.role === "assistant" && (
-                          <div className="ring-border size-10 overflow-hidden rounded-full ring-1 shrink-0">
-                            <Orb className="h-full w-full" agentState={null} />
-                          </div>
-                        )}
-                      </Message>
-                    ))}
-                    {interimText && (
-                      <div className="px-4 py-2 text-sm text-muted-foreground italic">
-                        &ldquo;{interimText}&rdquo;
-                      </div>
-                    )}
-                  </>
-                )}
-              </ConversationContent>
-              <ConversationScrollButton />
-            </Conversation>
-          </div>
-
-          <div className="border-t border-border/50 p-6">
-            <div className="flex flex-col items-center gap-4 max-w-lg mx-auto">
-              {error && (
-                <div className="w-full text-sm text-destructive text-center bg-destructive/10 rounded-lg p-3">
-                  {error}
-                </div>
-              )}
-
-              {engineStatus === "error" && (
-                <div className="w-full text-sm text-amber-500 text-center bg-amber-500/10 rounded-lg p-3">
-                  {error || "Something went wrong. Try refreshing the page."}
-                </div>
-              )}
-
-              {engineStatus === "idle" && !isActiveRef.current ? (
-                <Button
-                  onClick={beginInterview}
-                  size="lg"
-                  className="rounded-full px-12 py-8 gap-3"
-                >
-                  <Mic className="h-6 w-6" />
-                  <span className="text-lg">Begin Interview</span>
-                </Button>
-              ) : engineStatus === "idle" && isActiveRef.current ? (
-                <Button
-                  onClick={beginInterview}
-                  size="lg"
-                  className="rounded-full px-12 py-8 gap-3 animate-pulse"
-                >
-                  <Mic className="h-6 w-6" />
-                  <span className="text-lg">Start Speaking</span>
-                </Button>
-              ) : engineStatus === "starting" ? (
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Requesting microphone access...</p>
-                </div>
-              ) : engineStatus === "greeting" ? (
-                <div className="flex flex-col items-center gap-3">
-                  <Volume2 className="h-6 w-6 text-primary animate-pulse" />
-                  <p className="text-sm text-muted-foreground">Interviewer is greeting you...</p>
-                </div>
-              ) : engineStatus === "waiting" ? (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="relative flex h-4 w-4">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500" />
-                    </span>
-                    <span className="text-sm text-muted-foreground">Listening... speak now</span>
-                  </div>
+      <div className="flex-1 flex flex-col">
+        <div className="flex-1 relative">
+          <Conversation className="h-full">
+            <ConversationContent>
+              {messages.length === 0 ? (
+                <ConversationEmptyState
+                  icon={<Orb className="size-16" agentState="listening" />}
+                  title={`Welcome, ${name}!`}
+                  description="Your voice interview is about to begin..."
+                />
+              ) : (
+                <>
+                  {messages.map((message) => (
+                    <Message from={message.role} key={message.id}>
+                      <MessageContent>
+                        <Response>{message.content}</Response>
+                      </MessageContent>
+                      {message.role === "assistant" && (
+                        <div className="ring-border size-10 overflow-hidden rounded-full ring-1 shrink-0">
+                          <Orb className="h-full w-full" agentState={null} />
+                        </div>
+                      )}
+                    </Message>
+                  ))}
                   {interimText && (
-                    <p className="text-sm text-muted-foreground italic max-w-md text-center">
+                    <div className="px-4 py-2 text-sm text-muted-foreground italic">
                       &ldquo;{interimText}&rdquo;
-                    </p>
+                    </div>
                   )}
-                </div>
-              ) : engineStatus === "thinking" ? (
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Processing your response...</p>
-                </div>
-              ) : engineStatus === "responding" ? (
-                <div className="flex flex-col items-center gap-3">
-                  <Volume2 className="h-5 w-5 text-primary animate-pulse" />
-                  <span className="text-sm text-muted-foreground">AI is speaking...</span>
-                </div>
-              ) : null}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleEndCall}
-                className="gap-2 text-destructive hover:text-destructive"
-              >
-                <PhoneOff className="h-4 w-4" />
-                End Interview
-              </Button>
-            </div>
-          </div>
+                </>
+              )}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
         </div>
 
-        <div className="hidden lg:flex flex-col border-l border-border/50 bg-muted/20">
-          <div className="p-6 border-b border-border/50">
-            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Interview Status
-            </h3>
-          </div>
+        <div className="border-t border-border/50 p-6">
+          <div className="flex flex-col items-center gap-4 max-w-lg mx-auto">
+            {error && (
+              <div className="w-full text-sm text-destructive text-center bg-destructive/10 rounded-lg p-3">
+                {error}
+              </div>
+            )}
 
-          <div className="flex-1 flex flex-col items-center justify-center p-6">
-            <div className="relative mb-8">
-              <motion.div
-                animate={{
-                  scale: engineStatus === "responding" ? [1, 1.08, 1] : engineStatus === "waiting" ? [1, 1.04, 1] : 1,
-                }}
-                transition={{
-                  repeat: engineStatus === "responding" || engineStatus === "waiting" ? Infinity : 0,
-                  duration: engineStatus === "responding" ? 1.2 : 2.0,
-                }}
+            {engineStatus === "error" && (
+              <div className="w-full text-sm text-amber-500 text-center bg-amber-500/10 rounded-lg p-3">
+                {error || "Something went wrong. Try refreshing the page."}
+              </div>
+            )}
+
+            {engineStatus === "idle" ? (
+              <Button
+                onClick={beginInterview}
+                size="lg"
+                className="rounded-full px-12 py-8 gap-3"
               >
-                <Orb className="h-40 w-40" agentState={mapToOrbState(engineStatus)} />
-              </motion.div>
-            </div>
-
-            <div className="text-center mb-8">
-              <p className="text-lg font-medium mb-1">{name}</p>
-              <p className="text-sm text-muted-foreground capitalize">
-                {engineStatus === "idle" ? "Ready" : engineStatus === "waiting" ? "Waiting" : engineStatus === "responding" ? "Responding" : engineStatus}
-              </p>
-            </div>
-
-            <div className="w-full max-w-xs mb-8">
-              <BarVisualizer
-                state={mapToBarState(engineStatus)}
-                demo={true}
-                barCount={24}
-                minHeight={15}
-                maxHeight={90}
-                className="h-36 w-full"
-              />
-            </div>
-
-            <div className="w-full space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Questions</span>
-                <span className="font-medium">
-                  {messages.filter((m) => m.role === "assistant").length}
-                </span>
+                <Mic className="h-6 w-6" />
+                <span className="text-lg">Begin Interview</span>
+              </Button>
+            ) : engineStatus === "starting" ? (
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Starting...</p>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Your Responses</span>
-                <span className="font-medium">
-                  {messages.filter((m) => m.role === "user").length}
-                </span>
+            ) : engineStatus === "greeting" ? (
+              <div className="flex flex-col items-center gap-3">
+                <Volume2 className="h-6 w-6 text-primary animate-pulse" />
+                <p className="text-sm text-muted-foreground">Interviewer is greeting you...</p>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Status</span>
-                <span className="font-medium capitalize">
-                  {engineStatus === "idle" ? "ready" : engineStatus}
-                </span>
+            ) : engineStatus === "ready_to_speak" ? (
+              <Button
+                onClick={requestMicAndListen}
+                size="lg"
+                className="rounded-full px-12 py-8 gap-3"
+              >
+                <Mic className="h-6 w-6" />
+                <span className="text-lg">Start Speaking</span>
+              </Button>
+            ) : engineStatus === "waiting" ? (
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="relative flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500" />
+                  </span>
+                  <span className="text-sm text-muted-foreground">Listening... speak now</span>
+                </div>
+                {interimText && (
+                  <p className="text-sm text-muted-foreground italic max-w-md text-center">
+                    &ldquo;{interimText}&rdquo;
+                  </p>
+                )}
               </div>
-            </div>
+            ) : engineStatus === "thinking" ? (
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Processing your response...</p>
+              </div>
+            ) : engineStatus === "responding" ? (
+              <div className="flex flex-col items-center gap-3">
+                <Volume2 className="h-5 w-5 text-primary animate-pulse" />
+                <span className="text-sm text-muted-foreground">AI is speaking...</span>
+              </div>
+            ) : null}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEndCall}
+              className="gap-2 text-destructive hover:text-destructive"
+            >
+              <PhoneOff className="h-4 w-4" />
+              End Interview
+            </Button>
           </div>
         </div>
       </div>
