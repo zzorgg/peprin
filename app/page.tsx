@@ -81,7 +81,7 @@ export default function Page() {
         <div className="mt-16">
           <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-8">
             {companyLogos.map((company) => (
-              <img key={company.name} src={company.src} alt={company.name} className="h-6 w-auto opacity-50" />
+              <img key={company.name} src={company.src} alt={company.name} className="h-8 w-auto text-white" />
             ))}
           </div>
         </div>
