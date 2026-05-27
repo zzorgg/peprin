@@ -15,7 +15,7 @@ export function AnimatedCards() {
       {cardAnimations.map((anim, index) => (
         <div
           key={index}
-          className="group flex aspect-square items-center justify-center rounded-xl border border-border/50 bg-card/50 transition-colors hover:bg-card"
+          className="flex aspect-square items-center justify-center rounded-xl border border-border/50 bg-card/50"
         >
           <Matrix
             rows={7}

@@ -15,6 +15,8 @@ const companyLogos = [
   { name: "ElevenLabs", src: "/elevenlabs.svg" },
   { name: "Next.js", src: "/nextjs.svg" },
   { name: "Cerebras", src: "/cerebras.svg" },
+  { name: "DigitalOcean", src: "/digitalocean.svg" },
+  { name: "Vercel", src: "/vercel.svg" },
 ]
 
 export default function Page() {
