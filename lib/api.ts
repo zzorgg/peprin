@@ -1,59 +1,20 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
-export interface Personality {
-  id: string
-  name: string
-  description: string
-  traits: { name: string; description: string }[]
-  greeting: string
-  interview_style: string
-  emotional_baseline: {
-    initial_patience: number
-    initial_respect: number
-    initial_mood: "negative" | "neutral" | "positive"
-    patience_decay_rate: number
-    respect_growth_rate: number
-  }
-}
-
-export interface Session {
-  id: string
-  personality_id: string
-  personality_name: string
-  status: "created" | "active" | "ended" | "evaluated"
-  created_at: string
-  updated_at: string
-  exchange_count: number
-  current_emotional_state: {
-    patience: number
-    respect: number
-    mood: string
-  }
-  transcript?: { role: string; content: string; timestamp: string }[]
-}
-
 export interface VoiceSession {
   session_id: string
-  personality_id: string
+  personality_id: string | null
   personality_name: string
   greeting: string
-}
-
-export async function fetchPersonalities(): Promise<Personality[]> {
-  const res = await fetch(`${API_BASE_URL}/personalities/`)
-  if (!res.ok) throw new Error("Failed to fetch personalities")
-  const data = await res.json()
-  return data.personalities
 }
 
 export async function createVoiceSession(
-  personalityId: string,
   candidateName: string
 ): Promise<VoiceSession> {
-  const params = new URLSearchParams({ personality_id: personalityId })
+  const params = new URLSearchParams()
   if (candidateName) {
     params.set("candidate_name", candidateName)
   }
+  params.set("mode", "sde_i")
   const res = await fetch(`${API_BASE_URL}/voice/session?${params}`, {
     method: "POST",
   })
@@ -91,12 +52,6 @@ export async function* streamChatMessage(prompt: string, context = ""): AsyncGen
   } finally {
     clearTimeout(timeoutId)
   }
-}
-
-export async function getSession(sessionId: string): Promise<Session> {
-  const res = await fetch(`${API_BASE_URL}/sessions/${sessionId}`)
-  if (!res.ok) throw new Error("Failed to get session")
-  return res.json()
 }
 
 export async function endSession(sessionId: string) {

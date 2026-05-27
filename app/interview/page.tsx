@@ -1,17 +1,18 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import {
   ArrowLeft,
   Mic,
   Loader2,
-  Sparkles,
   ArrowRight,
   Volume2,
   PhoneOff,
+  Code2,
 } from "lucide-react"
+import Editor from "@monaco-editor/react"
 
 import { Button } from "@/components/ui/button"
 import { Orb, type AgentState } from "@/components/ui/orb"
@@ -24,12 +25,10 @@ import {
 import { Message, MessageContent } from "@/components/ui/message"
 import { Response } from "@/components/ui/response"
 import {
-  fetchPersonalities,
   createVoiceSession,
   streamChatMessage,
   endSession,
   speakWithElevenLabs,
-  type Personality,
   type VoiceSession,
 } from "@/lib/api"
 
@@ -40,6 +39,7 @@ interface ChatMessage {
 }
 
 type EngineStatus = "idle" | "starting" | "greeting" | "ready_to_speak" | "waiting" | "thinking" | "responding" | "error"
+type InterviewRound = "introduction" | "cs_fundamentals" | "system_design" | "coding"
 
 function mapToOrbState(status: EngineStatus): AgentState {
   switch (status) {
@@ -55,18 +55,25 @@ function mapToOrbState(status: EngineStatus): AgentState {
   }
 }
 
+function getCurrentRound(assistantMessageCount: number): InterviewRound {
+  if (assistantMessageCount <= 1) return "introduction"
+  if (assistantMessageCount <= 5) return "cs_fundamentals"
+  if (assistantMessageCount <= 7) return "system_design"
+  return "coding"
+}
+
 export default function InterviewPage() {
   const router = useRouter()
-  const [step, setStep] = useState<"name" | "personality" | "interview">("name")
+  const [step, setStep] = useState<"name" | "interview">("name")
   const [name, setName] = useState("")
   const [nameInput, setNameInput] = useState("")
-  const [personalities, setPersonalities] = useState<Personality[]>([])
-  const [selectedPersonality, setSelectedPersonality] = useState<Personality | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [engineStatus, setEngineStatus] = useState<EngineStatus>("idle")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [interimText, setInterimText] = useState("")
+  const [code, setCode] = useState("# Write your code here\n")
+  const [language, setLanguage] = useState("python")
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
@@ -74,6 +81,18 @@ export default function InterviewPage() {
   const isActiveRef = useRef(false)
   const engineStatusRef = useRef<EngineStatus>("idle")
   const restartCountRef = useRef(0)
+
+  const assistantMessageCount = useMemo(
+    () => messages.filter((m) => m.role === "assistant").length,
+    [messages]
+  )
+
+  const currentRound = useMemo(
+    () => getCurrentRound(assistantMessageCount),
+    [assistantMessageCount]
+  )
+
+  const showCodeEditor = currentRound === "coding"
 
   const updateStatus = useCallback((s: EngineStatus) => {
     engineStatusRef.current = s
@@ -399,37 +418,23 @@ export default function InterviewPage() {
         e.preventDefault()
         if (step === "name" && nameInput.trim()) {
           setName(nameInput.trim())
-          setStep("personality")
+          setStep("interview")
         }
       }
     },
     [step, nameInput]
   )
 
-  useEffect(() => {
-    if (step === "personality") {
-      setIsLoading(true)
-      fetchPersonalities()
-        .then((data) => {
-          setPersonalities(data)
-          setIsLoading(false)
-        })
-        .catch((err) => {
-          console.error("Failed to fetch personalities:", err)
-          setError("Failed to load interviewers.")
-          setIsLoading(false)
-        })
-    }
-  }, [step])
+  const handleStartInterview = useCallback(
+    async () => {
+      if (!nameInput.trim()) return
 
-  const handleSelectPersonality = useCallback(
-    async (personality: Personality) => {
-      setSelectedPersonality(personality)
+      setName(nameInput.trim())
       setIsLoading(true)
       setError(null)
 
       try {
-        const voiceSession = await createVoiceSession(personality.id, name)
+        const voiceSession = await createVoiceSession(nameInput.trim())
         sessionRef.current = voiceSession
 
         setMessages([
@@ -448,7 +453,7 @@ export default function InterviewPage() {
         setIsLoading(false)
       }
     },
-    [name]
+    []
   )
 
   if (step === "name") {
@@ -530,17 +535,21 @@ export default function InterviewPage() {
               >
                 <Button
                   size="lg"
-                  onClick={() => {
-                    if (nameInput.trim()) {
-                      setName(nameInput.trim())
-                      setStep("personality")
-                    }
-                  }}
-                  disabled={!nameInput.trim()}
+                  onClick={handleStartInterview}
+                  disabled={!nameInput.trim() || isLoading}
                   className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-lg rounded-full"
                 >
-                  Continue
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Starting...
+                    </>
+                  ) : (
+                    <>
+                      Start Interview
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </>
+                  )}
                 </Button>
               </motion.div>
             </motion.div>
@@ -553,111 +562,15 @@ export default function InterviewPage() {
           transition={{ delay: 1 }}
           className="absolute bottom-8 left-1/2 -translate-x-1/2 text-muted-foreground text-sm"
         >
-          Press Enter to continue
+          Press Enter to start
         </motion.div>
-      </div>
-    )
-  }
-
-  if (step === "personality") {
-    return (
-      <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
-
-        <button
-          onClick={() => setStep("name")}
-          className="absolute top-6 left-6 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors z-10"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="text-sm">Back</span>
-        </button>
-
-        <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center max-w-4xl w-full"
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="mb-4"
-            >
-              <Orb className="h-20 w-20 mx-auto" agentState="listening" />
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-4xl sm:text-5xl font-medium tracking-tight mb-4"
-            >
-              Choose your interviewer, {name}
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-lg text-muted-foreground mb-12"
-            >
-              Each interviewer has a unique style and personality
-            </motion.p>
-
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : error ? (
-              <div className="text-destructive py-8">{error}</div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-              >
-                {personalities.map((personality, index) => (
-                  <motion.button
-                    key={personality.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                    onClick={() => handleSelectPersonality(personality)}
-                    className="group text-left p-6 rounded-xl border border-border/50 bg-card/50 hover:bg-card hover:border-primary/50 transition-all duration-300 cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-medium group-hover:text-primary transition-colors">
-                        {personality.name}
-                      </h3>
-                      <Sparkles className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                      {personality.description}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {personality.traits.slice(0, 2).map((trait) => (
-                        <span
-                          key={trait.name}
-                          className="text-xs px-2 py-1 rounded-full bg-muted/50 text-muted-foreground"
-                        >
-                          {trait.name}
-                        </span>
-                      ))}
-                    </div>
-                  </motion.button>
-                ))}
-              </motion.div>
-            )}
-          </motion.div>
-        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="p-4">
+      <div className="flex items-center justify-between p-4 border-b border-border/50">
         <button
           onClick={handleEndCall}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -665,124 +578,182 @@ export default function InterviewPage() {
           <ArrowLeft className="h-4 w-4" />
           <span className="text-sm">Exit</span>
         </button>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            Round: {currentRound.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+          </span>
+          {showCodeEditor && (
+            <>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="bg-muted/50 border border-border/50 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="typescript">TypeScript</option>
+              </select>
+              <Code2 className="h-5 w-5 text-muted-foreground" />
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 relative">
-          <Conversation className="h-full">
-            <ConversationContent>
-              {messages.length === 0 ? (
-                <ConversationEmptyState
-                  icon={<Orb className="size-16" agentState="listening" />}
-                  title={`Welcome, ${name}!`}
-                  description="Your voice interview is about to begin..."
-                />
-              ) : (
-                <>
-                  {messages.map((message) => (
-                    <Message from={message.role} key={message.id}>
-                      <MessageContent>
-                        <Response>{message.content}</Response>
-                      </MessageContent>
-                      {message.role === "assistant" && (
-                        <div className="ring-border size-10 overflow-hidden rounded-full ring-1 shrink-0">
-                          <Orb className="h-full w-full" agentState={null} />
-                        </div>
-                      )}
-                    </Message>
-                  ))}
-                  {interimText && (
-                    <div className="px-4 py-2 text-sm text-muted-foreground italic">
-                      &ldquo;{interimText}&rdquo;
-                    </div>
-                  )}
-                </>
-              )}
-            </ConversationContent>
-            <ConversationScrollButton />
-          </Conversation>
-        </div>
-
-        <div className="border-t border-border/50 p-6">
-          <div className="flex flex-col items-center gap-4 max-w-lg mx-auto">
-            {error && (
-              <div className="w-full text-sm text-destructive text-center bg-destructive/10 rounded-lg p-3">
-                {error}
-              </div>
-            )}
-
-            {engineStatus === "error" && (
-              <div className="w-full text-sm text-amber-500 text-center bg-amber-500/10 rounded-lg p-3">
-                {error || "Something went wrong. Try refreshing the page."}
-              </div>
-            )}
-
-            {engineStatus === "idle" ? (
-              <Button
-                onClick={beginInterview}
-                size="lg"
-                className="rounded-full px-12 py-8 gap-3"
-              >
-                <Mic className="h-6 w-6" />
-                <span className="text-lg">Begin Interview</span>
-              </Button>
-            ) : engineStatus === "starting" ? (
-              <div className="flex flex-col items-center gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Starting...</p>
-              </div>
-            ) : engineStatus === "greeting" ? (
-              <div className="flex flex-col items-center gap-3">
-                <Volume2 className="h-6 w-6 text-primary animate-pulse" />
-                <p className="text-sm text-muted-foreground">Interviewer is greeting you...</p>
-              </div>
-            ) : engineStatus === "ready_to_speak" ? (
-              <Button
-                onClick={requestMicAndListen}
-                size="lg"
-                className="rounded-full px-12 py-8 gap-3"
-              >
-                <Mic className="h-6 w-6" />
-                <span className="text-lg">Start Speaking</span>
-              </Button>
-            ) : engineStatus === "waiting" ? (
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="relative flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500" />
-                  </span>
-                  <span className="text-sm text-muted-foreground">Listening... speak now</span>
-                </div>
-                {interimText && (
-                  <p className="text-sm text-muted-foreground italic max-w-md text-center">
-                    &ldquo;{interimText}&rdquo;
-                  </p>
+      <div className="flex-1 flex overflow-hidden">
+        <div className={`flex flex-col ${showCodeEditor ? "flex-1 border-r border-border/50" : "flex-1"}`}>
+          <div className="flex-1 relative">
+            <Conversation className="h-full">
+              <ConversationContent>
+                {messages.length === 0 ? (
+                  <ConversationEmptyState
+                    icon={<Orb className="size-16" agentState="listening" />}
+                    title={`Welcome, ${name}!`}
+                    description="Your voice interview is about to begin..."
+                  />
+                ) : (
+                  <>
+                    {messages.map((message) => (
+                      <Message from={message.role} key={message.id}>
+                        <MessageContent>
+                          <Response>{message.content}</Response>
+                        </MessageContent>
+                        {message.role === "assistant" && (
+                          <div className="ring-border size-10 overflow-hidden rounded-full ring-1 shrink-0">
+                            <Orb className="h-full w-full" agentState={null} />
+                          </div>
+                        )}
+                      </Message>
+                    ))}
+                    {interimText && (
+                      <div className="px-4 py-2 text-sm text-muted-foreground italic">
+                        &ldquo;{interimText}&rdquo;
+                      </div>
+                    )}
+                  </>
                 )}
-              </div>
-            ) : engineStatus === "thinking" ? (
-              <div className="flex flex-col items-center gap-3">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Processing your response...</p>
-              </div>
-            ) : engineStatus === "responding" ? (
-              <div className="flex flex-col items-center gap-3">
-                <Volume2 className="h-5 w-5 text-primary animate-pulse" />
-                <span className="text-sm text-muted-foreground">AI is speaking...</span>
-              </div>
-            ) : null}
+              </ConversationContent>
+              <ConversationScrollButton />
+            </Conversation>
+          </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEndCall}
-              className="gap-2 text-destructive hover:text-destructive"
-            >
-              <PhoneOff className="h-4 w-4" />
-              End Interview
-            </Button>
+          <div className="border-t border-border/50 p-6">
+            <div className="flex flex-col items-center gap-4 max-w-lg mx-auto">
+              {error && (
+                <div className="w-full text-sm text-destructive text-center bg-destructive/10 rounded-lg p-3">
+                  {error}
+                </div>
+              )}
+
+              {engineStatus === "error" && (
+                <div className="w-full text-sm text-amber-500 text-center bg-amber-500/10 rounded-lg p-3">
+                  {error || "Something went wrong. Try refreshing the page."}
+                </div>
+              )}
+
+              {engineStatus === "idle" ? (
+                <Button
+                  onClick={beginInterview}
+                  size="lg"
+                  className="rounded-full px-12 py-8 gap-3"
+                >
+                  <Mic className="h-6 w-6" />
+                  <span className="text-lg">Begin Interview</span>
+                </Button>
+              ) : engineStatus === "starting" ? (
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Starting...</p>
+                </div>
+              ) : engineStatus === "greeting" ? (
+                <div className="flex flex-col items-center gap-3">
+                  <Volume2 className="h-6 w-6 text-primary animate-pulse" />
+                  <p className="text-sm text-muted-foreground">Interviewer is greeting you...</p>
+                </div>
+              ) : engineStatus === "ready_to_speak" ? (
+                <Button
+                  onClick={requestMicAndListen}
+                  size="lg"
+                  className="rounded-full px-12 py-8 gap-3"
+                >
+                  <Mic className="h-6 w-6" />
+                  <span className="text-lg">Start Speaking</span>
+                </Button>
+              ) : engineStatus === "waiting" ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500" />
+                    </span>
+                    <span className="text-sm text-muted-foreground">Listening... speak now</span>
+                  </div>
+                  {interimText && (
+                    <p className="text-sm text-muted-foreground italic max-w-md text-center">
+                      &ldquo;{interimText}&rdquo;
+                    </p>
+                  )}
+                </div>
+              ) : engineStatus === "thinking" ? (
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Processing your response...</p>
+                </div>
+              ) : engineStatus === "responding" ? (
+                <div className="flex flex-col items-center gap-3">
+                  <Volume2 className="h-5 w-5 text-primary animate-pulse" />
+                  <span className="text-sm text-muted-foreground">AI is speaking...</span>
+                </div>
+              ) : null}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEndCall}
+                className="gap-2 text-destructive hover:text-destructive"
+              >
+                <PhoneOff className="h-4 w-4" />
+                End Interview
+              </Button>
+            </div>
           </div>
         </div>
+
+        {showCodeEditor && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+            className="w-[500px] flex flex-col bg-[#1e1e1e]"
+          >
+            <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-[#3e3e3e]">
+              <span className="text-sm text-gray-300 font-mono">solution.{language === "python" ? "py" : language === "javascript" ? "js" : language === "typescript" ? "ts" : language === "java" ? "java" : "cpp"}</span>
+              <span className="text-xs text-gray-500">{language}</span>
+            </div>
+            <Editor
+              height="100%"
+              defaultLanguage={language}
+              language={language}
+              value={code}
+              onChange={(value) => setCode(value || "")}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: "on",
+                roundedSelection: false,
+                scrollBeyondLastLine: true,
+                automaticLayout: true,
+                tabSize: 4,
+                wordWrap: "on",
+                padding: { top: 16, bottom: 16 },
+                fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+                fontLigatures: true,
+              }}
+            />
+          </motion.div>
+        )}
       </div>
     </div>
   )
