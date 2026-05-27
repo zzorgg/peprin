@@ -53,24 +53,24 @@ export default function Page() {
       {/* Hero Section */}
       <section className="mx-auto max-w-6xl px-6 pt-24 pb-16 text-center">
         <h1 className="text-5xl font-medium tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
-          Turn Usage
+          Ace Your
           <br />
-          Into Revenue
+          Next Interview
         </h1>
 
         <p className="mx-auto mt-6 max-w-lg text-lg text-muted-foreground">
-          A billing platform for the intelligence era
+          AI-powered interview simulation for developers. Practice with realistic AI interviewers, get instant feedback, and land your dream job.
         </p>
 
         <div className="mt-10 flex items-center justify-center gap-4">
           <Link href="/interview">
             <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 px-6">
-              Get Started
+              Start Practicing
               <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           </Link>
           <Button size="lg" variant="secondary" className="px-6">
-            Why Peprin
+            How It Works
           </Button>
         </div>
 
@@ -94,13 +94,13 @@ export default function Page() {
         <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
           <div>
             <h2 className="text-4xl font-medium tracking-tight sm:text-5xl lg:text-6xl">
-              Watch your
+              See it in
               <br />
-              revenue happen
+              action
             </h2>
           </div>
           <p className="text-lg text-muted-foreground lg:text-xl">
-            Orders, subscriptions, and customers the moment they land. Made for teams moving as fast as the models.
+            Real-time voice conversations with AI interviewers that adapt to your responses. Experience interviews that feel just like the real thing.
           </p>
         </div>
 
@@ -120,62 +120,62 @@ export default function Page() {
       <section className="mx-auto max-w-6xl px-6 py-24">
         <div className="mb-16">
           <h2 className="text-4xl font-medium tracking-tight sm:text-5xl">
-            Any pricing model.
+            Everything you need to
             <br />
-            Ships in an afternoon.
+            interview with confidence.
           </h2>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Usage Billing */}
+          {/* AI Interviewers */}
           <div className="rounded-xl border border-border/50 bg-card/50 p-6">
-            <h3 className="text-lg font-medium mb-2">Usage Billing</h3>
+            <h3 className="text-lg font-medium mb-2">AI Interviewers</h3>
             <p className="text-sm text-muted-foreground mb-8">
-              Meter tokens, API calls, compute, storage. Bill with precision down to the event.
+              Choose from multiple interviewer personalities. Each has a unique style, tone, and questioning approach.
             </p>
             <div className="flex items-center justify-center h-32">
               <Orb />
             </div>
           </div>
 
-          {/* Subscriptions */}
+          {/* Voice Conversations */}
           <div className="rounded-xl border border-border/50 bg-card/50 p-6">
-            <h3 className="text-lg font-medium mb-2">Subscriptions</h3>
+            <h3 className="text-lg font-medium mb-2">Voice Conversations</h3>
             <p className="text-sm text-muted-foreground mb-8">
-              Recurring plans with trials, upgrades, proration, and dunning built in.
+              Speak naturally and get real-time responses. No typing needed, just like a real interview.
             </p>
             <div className="flex items-center justify-center h-32">
               <Waveform />
             </div>
           </div>
 
-          {/* Seats */}
+          {/* Technical Questions */}
           <div className="rounded-xl border border-border/50 bg-card/50 p-6">
-            <h3 className="text-lg font-medium mb-2">Seats</h3>
+            <h3 className="text-lg font-medium mb-2">Technical Questions</h3>
             <p className="text-sm text-muted-foreground mb-8">
-              Pricing that scales with your customer's teams. Add, remove, prorate automatically.
+              Coding challenges, system design, algorithms, and behavioral questions tailored to your level.
             </p>
             <div className="flex items-center justify-center h-32">
               <Orb />
             </div>
           </div>
 
-          {/* Credits */}
+          {/* Instant Feedback */}
           <div className="rounded-xl border border-border/50 bg-card/50 p-6">
-            <h3 className="text-lg font-medium mb-2">Credits</h3>
+            <h3 className="text-lg font-medium mb-2">Instant Feedback</h3>
             <p className="text-sm text-muted-foreground mb-8">
-              Prepay and draw down over time, like a wallet for your API.
+              Get detailed feedback on your answers, communication skills, and areas for improvement after each session.
             </p>
             <div className="flex items-center justify-center h-32">
-              <ShimmeringText text="Credits" />
+              <ShimmeringText text="Feedback" />
             </div>
           </div>
 
-          {/* Trials */}
+          {/* Multiple Rounds */}
           <div className="rounded-xl border border-border/50 bg-card/50 p-6">
-            <h3 className="text-lg font-medium mb-2">Trials</h3>
+            <h3 className="text-lg font-medium mb-2">Multiple Rounds</h3>
             <p className="text-sm text-muted-foreground mb-8">
-              Free or paid trials with automatic conversion, reminders, and grace periods.
+              Practice screening calls, technical rounds, system design, and behavioral interviews in sequence.
             </p>
             <div className="flex items-center justify-center h-32 w-full px-4">
               <ScrubBarContainer duration={100} value={45}>
@@ -187,11 +187,11 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Discounts */}
+          {/* Performance Analytics */}
           <div className="rounded-xl border border-border/50 bg-card/50 p-6">
-            <h3 className="text-lg font-medium mb-2">Discounts</h3>
+            <h3 className="text-lg font-medium mb-2">Performance Analytics</h3>
             <p className="text-sm text-muted-foreground mb-8">
-              Coupons, promo codes, and volume tiers. Applied automatically at checkout.
+              Track your progress over time. See how your confidence and accuracy improve with each practice session.
             </p>
             <div className="flex items-center justify-center h-32">
               <BarVisualizer />
@@ -206,13 +206,13 @@ export default function Page() {
           {/* Left Content */}
           <div>
             <h2 className="text-4xl sm:text-5xl font-medium tracking-tight leading-tight">
-              Built for the
+              Interviews that feel
               <br />
-              shape of AI.
+              completely real.
             </h2>
             <div className="mt-6 w-8 h-px bg-border/50" />
             <p className="mt-6 text-lg text-muted-foreground max-w-md leading-relaxed">
-              From token-metered APIs to autonomous agents and GPU workloads, Peprin fits how modern AI products actually charge.
+              Powered by advanced AI with unique interviewer personalities, real-time voice conversations, and adaptive questioning that responds to your answers just like a human would.
             </p>
           </div>
 
@@ -220,54 +220,57 @@ export default function Page() {
           <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
             {/* Tabs */}
             <div className="flex border-b border-border/50">
-              <button className="px-4 py-2.5 text-sm font-medium bg-card border-b-2 border-primary text-foreground">completions.ts</button>
-              <button className="px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors">agents.ts</button>
-              <button className="px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors">gpu.ts</button>
+              <button className="px-4 py-2.5 text-sm font-medium bg-card border-b-2 border-primary text-foreground">interview.ts</button>
+              <button className="px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors">feedback.ts</button>
+              <button className="px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors">analytics.ts</button>
             </div>
 
             {/* Content */}
             <div className="p-6">
-              <h3 className="text-lg font-medium mb-2">AI completions</h3>
+              <h3 className="text-lg font-medium mb-2">Start an interview</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Wrap any model from the Vercel AI SDK with the Peprin LLMStrategy. Token usage is metered and billed automatically on every call.
+                Choose your interviewer, pick a topic, and start speaking. Peprin handles the rest with real-time voice AI.
               </p>
               <Button size="sm" variant="secondary" className="mb-6">
-                Read the docs
+                Try it now
               </Button>
 
               {/* Code Block */}
               <div className="rounded-lg bg-muted/30 border border-border/30 p-4 font-mono text-xs leading-relaxed overflow-x-auto">
                 <div className="text-muted-foreground">
-                  <span className="text-purple-400">import</span> {"{ Ingestion }"} <span className="text-purple-400">from</span> <span className="text-green-400">@polar-sh/ingestion</span>
+                  <span className="text-purple-400">import</span> {"{ Peprin }"} <span className="text-purple-400">from</span> <span className="text-green-400">@peprin/sdk</span>
                 </div>
                 <div className="text-muted-foreground">
-                  <span className="text-purple-400">import</span> {"{ LLMStrategy }"} <span className="text-purple-400">from</span> <span className="text-green-400">@polar-sh/ingestion/strategies/llm</span>
-                </div>
-                <div className="text-muted-foreground">
-                  <span className="text-purple-400">import</span> {"{ generateText }"} <span className="text-purple-400">from</span> <span className="text-green-400">ai</span>
-                </div>
-                <div className="text-muted-foreground">
-                  <span className="text-purple-400">import</span> {"{ openai }"} <span className="text-purple-400">from</span> <span className="text-green-400">@ai-sdk/openai</span>
+                  <span className="text-purple-400">import</span> {"{ VoiceSession }"} <span className="text-purple-400">from</span> <span className="text-green-400">@peprin/voice</span>
                 </div>
                 <div className="mt-3 text-muted-foreground">
-                  <span className="text-purple-400">const</span> llm = <span className="text-blue-400">Ingestion</span>({"{ accessToken: process.env.POLAR_ACCESS_TOKEN }"})
+                  <span className="text-purple-400">const</span> client = <span className="text-purple-400">new</span> <span className="text-blue-400">Peprin</span>({"{ apiKey: process.env.PEPRIN_API_KEY }"})
                 </div>
                 <div className="text-muted-foreground ml-4">
-                  .<span className="text-blue-400">strategy</span>(<span className="text-purple-400">new</span> <span className="text-blue-400">LLMStrategy</span>(openai(<span className="text-green-400">gpt-4o</span>)))
+                  .<span className="text-blue-400">session</span>({"{"}
+                </div>
+                <div className="text-muted-foreground ml-8">
+                  personality: <span className="text-green-400">"senior-engineer"</span>,
+                </div>
+                <div className="text-muted-foreground ml-8">
+                  topic: <span className="text-green-400">"system-design"</span>,
+                </div>
+                <div className="text-muted-foreground ml-8">
+                  difficulty: <span className="text-green-400">"intermediate"</span>,
                 </div>
                 <div className="text-muted-foreground ml-4">
-                  .<span className="text-blue-400">ingest</span>(<span className="text-green-400">openai-usage</span>)
-                </div>
+                  {"})"}</div>
                 <div className="mt-3 text-muted-foreground">
-                  <span className="text-purple-400">const</span> {"{ text }"} = <span className="text-purple-400">await</span> <span className="text-blue-400">generateText</span>({"{"}
+                  <span className="text-purple-400">const</span> session = <span className="text-purple-400">await</span> client.<span className="text-blue-400">start</span>()
                 </div>
                 <div className="text-muted-foreground ml-4">
-                  model: llm.<span className="text-blue-400">client</span>({"{ customerId: user.id }"}),
+                  session.<span className="text-blue-400">on</span>(<span className="text-green-400">"response"</span>, (answer) {"=>"} {"{"}
+                </div>
+                <div className="text-muted-foreground ml-8">
+                  console.<span className="text-blue-400">log</span>(answer.feedback)
                 </div>
                 <div className="text-muted-foreground ml-4">
-                  prompt,
-                </div>
-                <div className="text-muted-foreground">{"})"}</div>
+                  {"})"}</div>
               </div>
             </div>
           </div>
@@ -279,11 +282,11 @@ export default function Page() {
         <div className="flex gap-10">
           <div className="hidden sm:block w-px bg-border/30 self-stretch mt-2" />
           <div className="space-y-2">
-            <ScrollRevealText text="Event-based usage billing. Checkouts" className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight leading-tight" />
-            <ScrollRevealText text="that convert. Realtime metrics. Worldwide" className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight leading-tight" />
-            <ScrollRevealText text="tax handled." className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight leading-tight" />
-            <ScrollRevealText text="Peprin is the financial layer for a new" className="text-lg sm:text-xl mt-8 leading-relaxed" paragraph />
-            <ScrollRevealText text="generation of intelligent software." className="text-lg sm:text-xl leading-relaxed" paragraph />
+            <ScrollRevealText text="Realistic AI interviewers. Voice-powered" className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight leading-tight" />
+            <ScrollRevealText text="conversations. Instant feedback on your" className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight leading-tight" />
+            <ScrollRevealText text="answers and communication skills." className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight leading-tight" />
+            <ScrollRevealText text="Peprin is the practice platform for a new" className="text-lg sm:text-xl mt-8 leading-relaxed" paragraph />
+            <ScrollRevealText text="generation of developers." className="text-lg sm:text-xl leading-relaxed" paragraph />
           </div>
         </div>
       </section>
@@ -306,21 +309,21 @@ export default function Page() {
               <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Peprin</h4>
               <ul className="space-y-3">
                 <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">home</a></li>
+                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">interviews</a></li>
                 <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">pricing</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">downloads</a></li>
                 <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">changelog</a></li>
               </ul>
             </div>
 
             {/* Tools Column */}
             <div>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Tools</h4>
+              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Features</h4>
               <ul className="space-y-3">
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin Web</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin Desktop</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin MCP</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin Snapshot</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin Shaders</a></li>
+                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Voice Interviews</a></li>
+                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">AI Personalities</a></li>
+                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Technical Questions</a></li>
+                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Instant Feedback</a></li>
+                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Performance Analytics</a></li>
               </ul>
             </div>
 
@@ -346,8 +349,8 @@ export default function Page() {
               </ul>
               <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4 mt-8">Compare</h4>
               <ul className="space-y-3">
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin vs Stripe</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin vs Metered</a></li>
+                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin vs Pramp</a></li>
+                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin vs Interviewing.io</a></li>
               </ul>
             </div>
 
