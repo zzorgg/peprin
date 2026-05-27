@@ -513,8 +513,11 @@ export default function InterviewPage() {
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  onFocus={(e) => {
+                    e.target.setSelectionRange(0, 0)
+                  }}
                   placeholder="Type your name..."
-                  className="w-full text-3xl sm:text-4xl md:text-5xl bg-transparent border-b-2 border-border/50 focus:border-primary outline-none py-4 text-center text-foreground placeholder:text-muted-foreground/50 transition-colors"
+                  className="w-full text-3xl sm:text-4xl md:text-5xl bg-transparent border-b-2 border-border/50 focus:border-primary outline-none py-4 text-foreground placeholder:text-muted-foreground/50 transition-colors"
                   autoFocus
                 />
               </div>
