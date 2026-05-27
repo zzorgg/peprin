@@ -78,3 +78,64 @@ export async function speakWithElevenLabs(text: string): Promise<void> {
     audio.play().catch(() => { URL.revokeObjectURL(url); resolve() })
   })
 }
+
+export interface ExecutionResult {
+  success: boolean
+  output: string
+  error: string
+  runtime_ms: number
+  memory_kb: number
+}
+
+export async function executeCode(
+  language: string,
+  code: string,
+  stdin = ""
+): Promise<ExecutionResult> {
+  const res = await fetch(`${API_BASE_URL}/execution/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ language, code, stdin }),
+  })
+  if (!res.ok) throw new Error("Failed to execute code")
+  const raw = await res.json()
+  return raw.data || raw
+}
+
+export interface EvaluationResult {
+  session_id: string
+  personality_id: string | null
+  personality_name: string
+  hire_probability: number
+  score_breakdown: {
+    confidence: number
+    response_quality: number
+    hesitation_frequency: number
+    communication_clarity: number
+    technical_accuracy: number
+  }
+  communication_analysis: string
+  confidence_score: number
+  behavioral_observations: { category: string; observation: string }[]
+  strengths: string[]
+  weaknesses: string[]
+  areas_for_improvement: string[]
+  overall_summary: string
+  exchange_count: number
+  total_duration_seconds: number
+  evaluated_at: string
+}
+
+export async function generateEvaluation(sessionId: string): Promise<EvaluationResult> {
+  const res = await fetch(`${API_BASE_URL}/sessions/${sessionId}/evaluate/`, {
+    method: "POST",
+  })
+  if (!res.ok) throw new Error("Failed to generate evaluation")
+  return res.json()
+}
+
+export async function getEvaluation(sessionId: string): Promise<EvaluationResult> {
+  const res = await fetch(`${API_BASE_URL}/sessions/${sessionId}/evaluate/`)
+  if (!res.ok) throw new Error("Failed to get evaluation")
+  return res.json()
+}

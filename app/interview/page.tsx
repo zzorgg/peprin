@@ -29,7 +29,9 @@ import {
   streamChatMessage,
   endSession,
   speakWithElevenLabs,
+  executeCode,
   type VoiceSession,
+  type ExecutionResult,
 } from "@/lib/api"
 
 interface ChatMessage {
@@ -64,7 +66,7 @@ function getCurrentRound(assistantMessageCount: number): InterviewRound {
 
 export default function InterviewPage() {
   const router = useRouter()
-  const [step, setStep] = useState<"name" | "interview">("name")
+  const [step, setStep] = useState<"name" | "ready" | "interview">("name")
   const [name, setName] = useState("")
   const [nameInput, setNameInput] = useState("")
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -74,6 +76,8 @@ export default function InterviewPage() {
   const [interimText, setInterimText] = useState("")
   const [code, setCode] = useState("# Write your code here\n")
   const [language, setLanguage] = useState("python")
+  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null)
+  const [isExecuting, setIsExecuting] = useState(false)
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
@@ -393,6 +397,15 @@ export default function InterviewPage() {
 
     updateStatus("greeting")
     console.log("[interview] Speaking greeting:", s.greeting.slice(0, 80))
+
+    setMessages([
+      {
+        id: "greeting",
+        role: "assistant",
+        content: s.greeting,
+      },
+    ])
+
     await speakText(s.greeting)
     console.log("[interview] Greeting finished")
 
@@ -401,6 +414,7 @@ export default function InterviewPage() {
       return
     }
 
+    setStep("interview")
     updateStatus("ready_to_speak")
   }, [speakText, updateStatus])
 
@@ -412,18 +426,32 @@ export default function InterviewPage() {
     router.push("/")
   }, [cleanupAll, router])
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault()
-        if (step === "name" && nameInput.trim()) {
-          setName(nameInput.trim())
-          setStep("interview")
-        }
-      }
-    },
-    [step, nameInput]
-  )
+  const handleRunCode = useCallback(async () => {
+    if (!code.trim()) return
+    setIsExecuting(true)
+    setExecutionResult(null)
+    try {
+      const result = await executeCode(language, code)
+      setExecutionResult(result)
+    } catch (err) {
+      setExecutionResult({
+        success: false,
+        output: "",
+        error: "Failed to connect to execution service",
+        runtime_ms: 0,
+        memory_kb: 0,
+      })
+    } finally {
+      setIsExecuting(false)
+    }
+  }, [code, language])
+
+  const handleEndInterview = useCallback(async () => {
+    if (!sessionRef.current?.session_id) return
+    cleanupAll()
+    try { await endSession(sessionRef.current.session_id) } catch {}
+    router.push(`/results?session=${sessionRef.current.session_id}`)
+  }, [cleanupAll, router])
 
   const handleStartInterview = useCallback(
     async () => {
@@ -436,24 +464,27 @@ export default function InterviewPage() {
       try {
         const voiceSession = await createVoiceSession(nameInput.trim())
         sessionRef.current = voiceSession
-
-        setMessages([
-          {
-            id: "greeting",
-            role: "assistant",
-            content: voiceSession.greeting,
-          },
-        ])
-
         setIsLoading(false)
-        setStep("interview")
+        setStep("ready")
       } catch (err) {
         console.error("Failed to start session:", err)
         setError("Failed to start interview. Is the backend running?")
         setIsLoading(false)
       }
     },
-    []
+    [nameInput]
+  )
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault()
+        if (step === "name" && nameInput.trim()) {
+          handleStartInterview()
+        }
+      }
+    },
+    [step, nameInput, handleStartInterview]
   )
 
   if (step === "name") {
@@ -564,6 +595,85 @@ export default function InterviewPage() {
         >
           Press Enter to start
         </motion.div>
+      </div>
+    )
+  }
+
+  if (step === "ready") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
+
+        <button
+          onClick={handleEndCall}
+          className="absolute top-6 left-6 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors z-10"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="text-sm">Exit</span>
+        </button>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-6 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6 }}
+            className="text-center"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+              className="mb-12"
+            >
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
+                <Orb className="h-40 w-40 mx-auto relative" agentState="listening" />
+              </div>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+              className="text-4xl sm:text-5xl font-medium tracking-tight mb-4"
+            >
+              You&apos;re about to begin
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-lg text-muted-foreground mb-4"
+            >
+              SDE 1 Technical Interview
+            </motion.p>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="text-sm text-muted-foreground mb-12 max-w-md mx-auto"
+            >
+              Four rounds: Introduction, CS Fundamentals, System Design, and Coding. Speak clearly and take your time.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+            >
+              <Button
+                onClick={beginInterview}
+                size="lg"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 px-12 py-8 text-lg rounded-full"
+              >
+                <Mic className="mr-2 h-6 w-6" />
+                Begin Interview
+              </Button>
+            </motion.div>
+          </motion.div>
+        </div>
       </div>
     )
   }
@@ -710,7 +820,7 @@ export default function InterviewPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleEndCall}
+                onClick={handleEndInterview}
                 className="gap-2 text-destructive hover:text-destructive"
               >
                 <PhoneOff className="h-4 w-4" />
@@ -729,29 +839,63 @@ export default function InterviewPage() {
           >
             <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-[#3e3e3e]">
               <span className="text-sm text-gray-300 font-mono">solution.{language === "python" ? "py" : language === "javascript" ? "js" : language === "typescript" ? "ts" : language === "java" ? "java" : "cpp"}</span>
-              <span className="text-xs text-gray-500">{language}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">{language}</span>
+                <Button
+                  size="sm"
+                  onClick={handleRunCode}
+                  disabled={isExecuting || !code.trim()}
+                  className="bg-green-600 hover:bg-green-700 text-white h-6 px-3 text-xs rounded"
+                >
+                  {isExecuting ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    "Run"
+                  )}
+                </Button>
+              </div>
             </div>
-            <Editor
-              height="100%"
-              defaultLanguage={language}
-              language={language}
-              value={code}
-              onChange={(value) => setCode(value || "")}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: "on",
-                roundedSelection: false,
-                scrollBeyondLastLine: true,
-                automaticLayout: true,
-                tabSize: 4,
-                wordWrap: "on",
-                padding: { top: 16, bottom: 16 },
-                fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
-                fontLigatures: true,
-              }}
-            />
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 min-h-0">
+                <Editor
+                  height="100%"
+                  defaultLanguage={language}
+                  language={language}
+                  value={code}
+                  onChange={(value) => setCode(value || "")}
+                  theme="vs-dark"
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    lineNumbers: "on",
+                    roundedSelection: false,
+                    scrollBeyondLastLine: true,
+                    automaticLayout: true,
+                    tabSize: 4,
+                    wordWrap: "on",
+                    padding: { top: 16, bottom: 16 },
+                    fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+                    fontLigatures: true,
+                  }}
+                />
+              </div>
+              {executionResult && (
+                <div className="border-t border-[#3e3e3e] max-h-[200px] overflow-auto">
+                  <div className="flex items-center justify-between px-4 py-1.5 bg-[#252526]">
+                    <span className="text-xs text-gray-400">Output</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500">{executionResult.runtime_ms}ms</span>
+                      <span className={`text-xs ${executionResult.success ? "text-green-400" : "text-red-400"}`}>
+                        {executionResult.success ? "Success" : "Failed"}
+                      </span>
+                    </div>
+                  </div>
+                  <pre className="px-4 py-2 text-xs font-mono text-gray-300 whitespace-pre-wrap">
+                    {executionResult.error || executionResult.output || "(no output)"}
+                  </pre>
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </div>
