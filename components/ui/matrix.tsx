@@ -79,7 +79,12 @@ function useAnimation(
 
       const deltaTime = currentTime - lastTimeRef.current
       lastTimeRef.current = currentTime
-      accumulatorRef.current += deltaTime
+
+      if (deltaTime > 200) {
+        accumulatorRef.current = 0
+      } else {
+        accumulatorRef.current += deltaTime
+      }
 
       if (accumulatorRef.current >= frameInterval) {
         accumulatorRef.current -= frameInterval
@@ -244,17 +249,22 @@ export const chevronRight: Frame = [
 export const loader: Frame[] = (() => {
   const frames: Frame[] = []
   const size = 7
-  const center = 3
-  const radius = 2.5
 
-  for (let frame = 0; frame < 12; frame++) {
+  const circlePath: Array<[number, number]> = [
+    [0, 3], [1, 4], [2, 5], [3, 6],
+    [4, 5], [5, 4], [6, 3], [5, 2],
+    [4, 1], [3, 0], [2, 1], [1, 2],
+  ]
+
+  const trailLength = 6
+
+  for (let frame = 0; frame < circlePath.length; frame++) {
     const f = emptyFrame(size, size)
-    for (let i = 0; i < 8; i++) {
-      const angle = (frame / 12) * Math.PI * 2 + (i / 8) * Math.PI * 2
-      const x = Math.round(center + Math.cos(angle) * radius)
-      const y = Math.round(center + Math.sin(angle) * radius)
-      const brightness = 1 - i / 10
-      setPixel(f, y, x, Math.max(0.2, brightness))
+    for (let i = 0; i < trailLength; i++) {
+      const idx = (frame - i + circlePath.length) % circlePath.length
+      const [y, x] = circlePath[idx]
+      const brightness = 1 - i / trailLength
+      setPixel(f, y, x, Math.max(0.15, brightness))
     }
     frames.push(f)
   }
