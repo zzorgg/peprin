@@ -11,66 +11,120 @@ import { ShimmeringText } from "@/components/ui/shimmering-text"
 import { ScrubBarContainer, ScrubBarTrack, ScrubBarProgress, ScrubBarThumb } from "@/components/ui/scrub-bar"
 import { BarVisualizer } from "@/components/ui/bar-visualizer"
 import { ScrollRevealText } from "@/components/scroll-reveal-text"
+import { Matrix, loader } from "@/components/ui/matrix"
 
 const codeExamples: Record<string, string[]> = {
   cpp: [
-    "#include <peprin/sdk.h>",
-    "#include <peprin/voice.h>",
-    "",
-    "using namespace peprin;",
-    "",
-    "int main() {",
+    '#include <peprin/sdk.h>',
+    '#include <peprin/voice.h>',
+    '',
+    'using namespace peprin;',
+    '',
+    'int main() {',
     '  Peprin client("your-api-key");',
-    "  auto session = client.session({",
+    '  auto session = client.session({',
     '    .personality = "senior-engineer",',
     '    .topic = "system-design",',
     '    .difficulty = "intermediate"',
-    "  }).start();",
-    "",
-    "  session.on_response([](const Answer& answer) {",
-    "    std::cout << answer.feedback;",
-    "  });",
-    "}",
+    '  }).start();',
+    '',
+    '  session.on_response([](const Answer& answer) {',
+    '    std::cout << answer.feedback;',
+    '  });',
+    '}',
   ],
   java: [
-    "import com.peprin.sdk.Peprin;",
-    "import com.peprin.voice.VoiceSession;",
-    "",
-    "public class Interview {",
-    "  public static void main(String[] args) {",
-    "    Peprin client = new Peprin(",
+    'import com.peprin.sdk.Peprin;',
+    'import com.peprin.voice.VoiceSession;',
+    '',
+    'public class Interview {',
+    '  public static void main(String[] args) {',
+    '    Peprin client = new Peprin(',
     '      System.getenv("PEPRIN_API_KEY")',
-    "    );",
-    "",
-    "    VoiceSession session = client.session()",
+    '    );',
+    '',
+    '    VoiceSession session = client.session()',
     '      .personality("senior-engineer")',
     '      .topic("system-design")',
     '      .difficulty("intermediate")',
-    "      .start();",
-    "",
-    "    session.onResponse(answer ->",
-    "      System.out.println(answer.getFeedback())",
-    "    );",
-    "  }",
-    "}",
+    '      .start();',
+    '',
+    '    session.onResponse(answer ->',
+    '      System.out.println(answer.getFeedback())',
+    '    );',
+    '  }',
+    '}',
   ],
   python: [
-    "from peprin import Peprin",
-    "from peprin.voice import VoiceSession",
-    "",
+    'from peprin import Peprin',
+    'from peprin.voice import VoiceSession',
+    '',
     'client = Peprin(api_key=os.environ["PEPRIN_API_KEY"])',
-    "",
-    "session = client.session(",
+    '',
+    'session = client.session(',
     '  personality="senior-engineer",',
     '  topic="system-design",',
     '  difficulty="intermediate"',
-    ").start()",
-    "",
-    "def on_response(answer):",
-    "  print(answer.feedback)",
-    "",
+    ').start()',
+    '',
+    'def on_response(answer):',
+    '  print(answer.feedback)',
+    '',
     'session.on("response", on_response)',
   ],
+}
+
+const keywords = new Set([
+  'import', 'from', 'const', 'new', 'await', 'auto', 'int', 'void', 'public', 'class', 'static',
+  'def', 'return', 'using', 'namespace', 'include',
+])
+
+const builtins = new Set([
+  'console', 'log', 'cout', 'cin', 'endl', 'System', 'out', 'println', 'getenv',
+  'print', 'os', 'environ', 'std', 'string', 'String', 'args', 'Answer',
+  'Peprin', 'VoiceSession', 'session', 'start', 'on_response', 'onResponse', 'on',
+  'personality', 'topic', 'difficulty', 'api_key', 'PEPRIN_API_KEY',
+])
+
+function highlightCpp(line: string): string {
+  if (line.trimStart().startsWith('#')) {
+    const parts = line.split(/(<[^>]+>)/)
+    return parts.map((p, i) => {
+      if (p.startsWith('#')) return `<span class="text-purple-400">${p}</span>`
+      if (p.startsWith('<')) return `<span class="text-green-400">${p}</span>`
+      return p
+    }).join('')
+  }
+  return highlightGeneral(line)
+}
+
+function highlightJava(line: string): string {
+  return highlightGeneral(line)
+}
+
+function highlightPython(line: string): string {
+  return highlightGeneral(line)
+}
+
+function highlightGeneral(line: string): string {
+  let result = line
+  result = result.replace(/(\/\/.*$|#.*$)/g, '<span class="text-gray-500">$1</span>')
+  result = result.replace(/(".*?")/g, '<span class="text-green-400">$1</span>')
+  result = result.replace(/('.*?')/g, '<span class="text-green-400">$1</span>')
+
+  const tokens = result.split(/(\b\w+\b|[{}()\[\];,.<>=\-&|!+*/%?:@])/)
+  return tokens.map((token) => {
+    if (!token) return ''
+    if (keywords.has(token)) return `<span class="text-purple-400">${token}</span>`
+    if (builtins.has(token)) return `<span class="text-blue-400">${token}</span>`
+    return token
+  }).join('')
+}
+
+const highlighters: Record<string, (line: string) => string> = {
+  cpp: highlightCpp,
+  java: highlightJava,
+  python: highlightPython,
 }
 
 const companyLogos = [
@@ -85,7 +139,6 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState("cpp")
 
   const tabs = [
-    { id: "cpp", label: "C++" },
     { id: "cpp", label: "C++" },
     { id: "java", label: "Java" },
     { id: "python", label: "Python" },
@@ -173,7 +226,6 @@ export default function Page() {
 
         <div className="mt-16 overflow-hidden rounded-2xl border border-border/50 bg-card/50 p-2">
           <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/50">
-            {/* Replace this div with your video element */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center text-muted-foreground">
                 <p className="text-sm">Product demo video goes here</p>
@@ -223,7 +275,7 @@ export default function Page() {
               Coding challenges, system design, algorithms, and behavioral questions tailored to your level.
             </p>
             <div className="flex items-center justify-center h-32">
-              <Orb />
+              <Matrix rows={7} cols={7} frames={loader} size={8} gap={3} />
             </div>
           </div>
 
@@ -313,9 +365,13 @@ export default function Page() {
               </Button>
 
               {/* Code Block */}
-              <div className="rounded-lg bg-muted/30 border border-border/30 p-4 font-mono text-xs leading-relaxed overflow-x-auto text-muted-foreground">
+              <div className="rounded-lg bg-muted/30 border border-border/30 p-4 font-mono text-xs leading-relaxed overflow-x-auto">
                 {codeExamples[activeTab].map((line, i) => (
-                  <div key={i}>{line || "\u00A0"}</div>
+                  <div
+                    key={i}
+                    className="text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: highlighters[activeTab]?.(line) || line || '&nbsp;' }}
+                  />
                 ))}
               </div>
             </div>
@@ -336,6 +392,18 @@ export default function Page() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border/50 bg-muted/30">
+        <div className="mx-auto max-w-6xl px-6 py-16 text-center">
+          <div className="flex items-center justify-center gap-0 select-none">
+            <span className="text-7xl sm:text-9xl font-bold tracking-tight">pepr</span>
+            <span className="text-7xl sm:text-9xl font-bold tracking-tight text-primary">i</span>
+            <span className="text-7xl sm:text-9xl font-bold tracking-tight">n</span>
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground">© 2026 Peprin. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   )
 }
