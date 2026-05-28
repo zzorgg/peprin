@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "@phosphor-icons/react"
@@ -20,6 +21,92 @@ const companyLogos = [
 ]
 
 export default function Page() {
+  const [activeTab, setActiveTab] = useState("typescript")
+
+  const codeExamples = {
+    typescript: [
+      { line: '<span class="text-purple-400">import</span> { Peprin } <span class="text-purple-400">from</span> <span class="text-green-400">"@peprin/sdk"</span>' },
+      { line: '<span class="text-purple-400">import</span> { VoiceSession } <span class="text-purple-400">from</span> <span class="text-green-400">"@peprin/voice"</span>' },
+      { line: "" },
+      { line: '<span class="text-purple-400">const</span> client = <span class="text-purple-400">new</span> <span class="text-blue-400">Peprin</span>({ apiKey: process.env.PEPRIN_API_KEY })' },
+      { line: "  .<span class="text-blue-400">session</span>({" },
+      { line: '    personality: <span class="text-green-400">"senior-engineer"</span>,' },
+      { line: '    topic: <span class="text-green-400">"system-design"</span>,' },
+      { line: '    difficulty: <span class="text-green-400">"intermediate"</span>,' },
+      { line: "  })" },
+      { line: "" },
+      { line: '<span class="text-purple-400">const</span> session = <span class="text-purple-400">await</span> client.<span class="text-blue-400">start</span>()' },
+      { line: 'session.<span class="text-blue-400">on</span>(<span class="text-green-400">"response"</span>, (answer) <span class="text-purple-400">=&gt;</span> {' },
+      { line: "  console.<span class="text-blue-400">log</span>(answer.feedback)" },
+      { line: "})" },
+    ],
+    cpp: [
+      { line: '<span class="text-purple-400">#include</span> <span class="text-green-400">&lt;peprin/sdk.h&gt;</span>' },
+      { line: '<span class="text-purple-400">#include</span> <span class="text-green-400">&lt;peprin/voice.h&gt;</span>' },
+      { line: "" },
+      { line: '<span class="text-purple-400">using namespace</span> peprin;' },
+      { line: "" },
+      { line: '<span class="text-purple-400">int</span> <span class="text-blue-400">main</span>() {' },
+      { line: '  Peprin client(<span class="text-green-400">"your-api-key"</span>);' },
+      { line: "  <span class="text-purple-400">auto</span> session = client.<span class="text-blue-400">session</span>({" },
+      { line: '    .personality = <span class="text-green-400">"senior-engineer"</span>,' },
+      { line: '    .topic = <span class="text-green-400">"system-design"</span>,' },
+      { line: '    .difficulty = <span class="text-green-400">"intermediate"</span>' },
+      { line: "  }).<span class="text-blue-400">start</span>();" },
+      { line: "" },
+      { line: "  session.<span class="text-blue-400">on_response</span>([](<span class="text-purple-400">const</span> Answer& answer) {" },
+      { line: "    std::cout <span class="text-purple-400">&lt;&lt;</span> answer.feedback;" },
+      { line: "  });" },
+      { line: "}" },
+    ],
+    java: [
+      { line: '<span class="text-purple-400">import</span> com.peprin.sdk.Peprin;' },
+      { line: '<span class="text-purple-400">import</span> com.peprin.voice.VoiceSession;' },
+      { line: "" },
+      { line: '<span class="text-purple-400">public class</span> <span class="text-blue-400">Interview</span> {' },
+      { line: '  <span class="text-purple-400">public static void</span> <span class="text-blue-400">main</span>(String[] args) {' },
+      { line: '    Peprin client = <span class="text-purple-400">new</span> Peprin(' },
+      { line: '      System.<span class="text-blue-400">getenv</span>(<span class="text-green-400">"PEPRIN_API_KEY"</span>)' },
+      { line: "    );" },
+      { line: "" },
+      { line: "    VoiceSession session = client.<span class="text-blue-400">session</span>()" },
+      { line: '      .<span class="text-blue-400">personality</span>(<span class="text-green-400">"senior-engineer"</span>)' },
+      { line: '      .<span class="text-blue-400">topic</span>(<span class="text-green-400">"system-design"</span>)' },
+      { line: '      .<span class="text-blue-400">difficulty</span>(<span class="text-green-400">"intermediate"</span>)' },
+      { line: "      .<span class="text-blue-400">start</span>();" },
+      { line: "" },
+      { line: "    session.<span class="text-blue-400">onResponse</span>(answer <span class="text-purple-400">-&gt;</span>" },
+      { line: "      System.out.<span class="text-blue-400">println</span>(answer.getFeedback())" },
+      { line: "    );" },
+      { line: "  }" },
+      { line: "}" },
+    ],
+    python: [
+      { line: '<span class="text-purple-400">from</span> peprin <span class="text-purple-400">import</span> Peprin' },
+      { line: '<span class="text-purple-400">from</span> peprin.voice <span class="text-purple-400">import</span> VoiceSession' },
+      { line: "" },
+      { line: 'client = Peplin(api_key=<span class="text-green-400">os.environ</span>[<span class="text-green-400">"PEPRIN_API_KEY"</span>])' },
+      { line: "" },
+      { line: "session = client.<span class="text-blue-400">session</span>(" },
+      { line: '  personality=<span class="text-green-400">"senior-engineer"</span>,' },
+      { line: '  topic=<span class="text-green-400">"system-design"</span>,' },
+      { line: '  difficulty=<span class="text-green-400">"intermediate"</span>' },
+      { line: ").<span class="text-blue-400">start</span>()" },
+      { line: "" },
+      { line: '<span class="text-purple-400">def</span> <span class="text-blue-400">on_response</span>(answer):' },
+      { line: "  <span class="text-blue-400">print</span>(answer.feedback)" },
+      { line: "" },
+      { line: "session.<span class="text-blue-400">on</span>(<span class="text-green-400">"response"</span>, on_response)" },
+    ],
+  }
+
+  const tabs = [
+    { id: "typescript", label: "TypeScript" },
+    { id: "cpp", label: "C++" },
+    { id: "java", label: "Java" },
+    { id: "python", label: "Python" },
+  ]
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
@@ -33,13 +120,9 @@ export default function Page() {
 
           <nav className="hidden items-center gap-8 md:flex">
             <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Docs</a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Blog</a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Company</a>
           </nav>
 
           <div className="flex items-center gap-4">
-            <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">Sign in</button>
             <Link href="/interview">
               <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
                 Get Started
@@ -220,9 +303,19 @@ export default function Page() {
           <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
             {/* Tabs */}
             <div className="flex border-b border-border/50">
-              <button className="px-4 py-2.5 text-sm font-medium bg-card border-b-2 border-primary text-foreground">interview.ts</button>
-              <button className="px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors">feedback.ts</button>
-              <button className="px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors">analytics.ts</button>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2.5 text-sm transition-colors ${
+                    activeTab === tab.id
+                      ? "font-medium border-b-2 border-primary text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
             {/* Content */}
@@ -237,40 +330,9 @@ export default function Page() {
 
               {/* Code Block */}
               <div className="rounded-lg bg-muted/30 border border-border/30 p-4 font-mono text-xs leading-relaxed overflow-x-auto">
-                <div className="text-muted-foreground">
-                  <span className="text-purple-400">import</span> {"{ Peprin }"} <span className="text-purple-400">from</span> <span className="text-green-400">@peprin/sdk</span>
-                </div>
-                <div className="text-muted-foreground">
-                  <span className="text-purple-400">import</span> {"{ VoiceSession }"} <span className="text-purple-400">from</span> <span className="text-green-400">@peprin/voice</span>
-                </div>
-                <div className="mt-3 text-muted-foreground">
-                  <span className="text-purple-400">const</span> client = <span className="text-purple-400">new</span> <span className="text-blue-400">Peprin</span>({"{ apiKey: process.env.PEPRIN_API_KEY }"})
-                </div>
-                <div className="text-muted-foreground ml-4">
-                  .<span className="text-blue-400">session</span>({"{"}
-                </div>
-                <div className="text-muted-foreground ml-8">
-                  personality: <span className="text-green-400">"senior-engineer"</span>,
-                </div>
-                <div className="text-muted-foreground ml-8">
-                  topic: <span className="text-green-400">"system-design"</span>,
-                </div>
-                <div className="text-muted-foreground ml-8">
-                  difficulty: <span className="text-green-400">"intermediate"</span>,
-                </div>
-                <div className="text-muted-foreground ml-4">
-                  {"})"}</div>
-                <div className="mt-3 text-muted-foreground">
-                  <span className="text-purple-400">const</span> session = <span className="text-purple-400">await</span> client.<span className="text-blue-400">start</span>()
-                </div>
-                <div className="text-muted-foreground ml-4">
-                  session.<span className="text-blue-400">on</span>(<span className="text-green-400">"response"</span>, (answer) {"=>"} {"{"}
-                </div>
-                <div className="text-muted-foreground ml-8">
-                  console.<span className="text-blue-400">log</span>(answer.feedback)
-                </div>
-                <div className="text-muted-foreground ml-4">
-                  {"})"}</div>
+                {codeExamples[activeTab as keyof typeof codeExamples].map((line, i) => (
+                  <div key={i} className="text-muted-foreground" dangerouslySetInnerHTML={{ __html: line.line || "&nbsp;" }} />
+                ))}
               </div>
             </div>
           </div>
@@ -290,92 +352,6 @@ export default function Page() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-muted/30">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-6">
-            {/* Logo Column */}
-            <div className="lg:col-span-1">
-              <div className="flex items-center gap-0">
-                <span className="text-lg font-medium">pepr</span>
-                <span className="text-lg font-medium text-primary">i</span>
-                <span className="text-lg font-medium">n</span>
-              </div>
-            </div>
-
-            {/* Peprin Column */}
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Peprin</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">home</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">interviews</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">pricing</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">changelog</a></li>
-              </ul>
-            </div>
-
-            {/* Tools Column */}
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Features</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Voice Interviews</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">AI Personalities</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Technical Questions</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Instant Feedback</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Performance Analytics</a></li>
-              </ul>
-            </div>
-
-            {/* Community Column */}
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Community</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">twitter</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">discord</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">slack</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">reddit</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">youtube</a></li>
-              </ul>
-            </div>
-
-            {/* Resources Column */}
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Resources</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">docs</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">blog</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">roadmap</a></li>
-              </ul>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4 mt-8">Compare</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin vs Pramp</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Peprin vs Interviewing.io</a></li>
-              </ul>
-            </div>
-
-            {/* Legal Column */}
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Legal</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">privacy</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">terms</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">dpa</a></li>
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">subprocessors</a></li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Bottom Row */}
-          <div className="mt-16 pt-8 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-6">
-              <span className="text-sm text-muted-foreground">© 2026</span>
-              <a href="mailto:hello@peprin.com" className="text-sm text-muted-foreground hover:text-foreground transition-colors">hello@peprin.com</a>
-            </div>
-            <span className="text-6xl sm:text-8xl font-bold text-foreground/5 tracking-tight select-none">Peprin</span>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }
