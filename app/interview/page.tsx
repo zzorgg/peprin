@@ -455,7 +455,7 @@ export default function InterviewPage() {
     if (sessionRef.current?.session_id) {
       try { await endSession(sessionRef.current.session_id) } catch {}
     }
-    router.push("/")
+    router.back()
   }, [cleanupAll, router])
 
   const handleRunCode = useCallback(async () => {
@@ -594,7 +594,7 @@ export default function InterviewPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
 
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.back()}
           className="absolute top-6 left-6 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors z-10"
         >
           <ArrowLeft className="h-4 w-4" />
