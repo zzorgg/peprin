@@ -30,6 +30,7 @@ import {
   endSession,
   speakWithElevenLabs,
   executeCode,
+  skipRound,
   type VoiceSession,
   type ExecutionResult,
 } from "@/lib/api"
@@ -78,6 +79,8 @@ export default function InterviewPage() {
   const [language, setLanguage] = useState("python")
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null)
   const [isExecuting, setIsExecuting] = useState(false)
+  const [serverRound, setServerRound] = useState<InterviewRound>("introduction")
+  const [isSkipping, setIsSkipping] = useState(false)
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
@@ -85,6 +88,7 @@ export default function InterviewPage() {
   const isActiveRef = useRef(false)
   const engineStatusRef = useRef<EngineStatus>("idle")
   const restartCountRef = useRef(0)
+  const accumulatedTranscriptRef = useRef("")
 
   const assistantMessageCount = useMemo(
     () => messages.filter((m) => m.role === "assistant").length,
@@ -92,8 +96,8 @@ export default function InterviewPage() {
   )
 
   const currentRound = useMemo(
-    () => getCurrentRound(assistantMessageCount),
-    [assistantMessageCount]
+    () => serverRound || getCurrentRound(assistantMessageCount),
+    [serverRound, assistantMessageCount]
   )
 
   const showCodeEditor = currentRound === "coding"
@@ -199,7 +203,7 @@ export default function InterviewPage() {
         const assistantMessageId = (Date.now() + 1).toString()
         let fullResponse = ""
 
-        const gen = streamChatMessage(text)
+        const gen = streamChatMessage(text, sessionRef.current.session_id)
         for await (const token of gen) {
           fullResponse += token
           setMessages((prev) => {
@@ -265,22 +269,30 @@ export default function InterviewPage() {
     killMic()
 
     const recognition = new SpeechRecognitionClass()
-    recognition.continuous = false
+    recognition.continuous = true
     recognition.interimResults = true
     recognition.lang = "en-US"
     recognition.maxAlternatives = 1
 
     let finalTranscript = ""
+    let allSegments: string[] = []
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       if (!isActiveRef.current) return
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i]
+        const transcript = result[0].transcript.trim()
+        if (!transcript) continue
+
         if (result.isFinal) {
-          finalTranscript += " " + result[0].transcript
+          allSegments.push(transcript)
+          const full = allSegments.join(" ")
+          accumulatedTranscriptRef.current = full
+          setInterimText(full)
         } else {
-          setInterimText(result[0].transcript)
+          const interim = allSegments.join(" ") + (allSegments.length > 0 ? " " : "") + transcript
+          setInterimText(interim)
         }
       }
     }
@@ -292,26 +304,30 @@ export default function InterviewPage() {
         setError("Microphone denied. Please allow mic access and reload.")
         updateStatus("idle")
       }
+      if (err.error === "no-speech" || err.error === "aborted") {
+        return
+      }
     }
 
     recognition.onend = () => {
-      console.log("[recognition] Ended, final:", finalTranscript.trim().slice(0, 50))
+      console.log("[recognition] Ended, segments:", allSegments.length)
 
       if (!isActiveRef.current) return
       if (engineStatusRef.current !== "waiting") return
 
-      const spoken = finalTranscript.trim()
-      if (spoken) {
+      if (allSegments.length > 0) {
+        const spoken = accumulatedTranscriptRef.current.trim()
+        allSegments = []
+        accumulatedTranscriptRef.current = ""
         setInterimText("")
         setError(null)
         handleUserSpeechRef.current(spoken)
-      } else if (restartCountRef.current < 3) {
-        console.log("[recognition] No speech, restart attempt", restartCountRef.current + 1)
-        restartCountRef.current++
+      } else {
+        console.log("[recognition] No speech captured, restarting...")
         try {
           recognitionRef.current = null
           const newRec = new SpeechRecognitionClass()
-          newRec.continuous = false
+          newRec.continuous = true
           newRec.interimResults = true
           newRec.lang = "en-US"
           newRec.maxAlternatives = 1
@@ -324,14 +340,12 @@ export default function InterviewPage() {
           console.log("[recognition] Restart failed")
           updateStatus("idle")
         }
-      } else {
-        console.log("[recognition] Max restarts reached, going idle")
-        updateStatus("idle")
       }
     }
 
     recognitionRef.current = recognition
-    restartCountRef.current = 0
+    allSegments = []
+    accumulatedTranscriptRef.current = ""
     try {
       recognition.start()
       console.log("[recognition] Started, waiting for speech...")
@@ -340,6 +354,23 @@ export default function InterviewPage() {
       updateStatus("idle")
     }
   }, [updateStatus, killMic])
+
+  const stopSpeaking = useCallback(() => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop() } catch {}
+      recognitionRef.current = null
+    }
+
+    const spoken = accumulatedTranscriptRef.current.trim()
+    accumulatedTranscriptRef.current = ""
+    if (spoken) {
+      setInterimText("")
+      setError(null)
+      handleUserSpeechRef.current(spoken)
+    } else {
+      updateStatus("idle")
+    }
+  }, [])
 
   useEffect(() => {
     startRecognitionRef.current = startRecognition
@@ -406,6 +437,8 @@ export default function InterviewPage() {
       },
     ])
 
+    setStep("interview")
+
     await speakText(s.greeting)
     console.log("[interview] Greeting finished")
 
@@ -414,7 +447,6 @@ export default function InterviewPage() {
       return
     }
 
-    setStep("interview")
     updateStatus("ready_to_speak")
   }, [speakText, updateStatus])
 
@@ -452,6 +484,75 @@ export default function InterviewPage() {
     try { await endSession(sessionRef.current.session_id) } catch {}
     router.push(`/results?session=${sessionRef.current.session_id}`)
   }, [cleanupAll, router])
+
+  const handleSkipRound = useCallback(async () => {
+    if (!sessionRef.current?.session_id) return
+    setIsSkipping(true)
+    try {
+      const result = await skipRound(sessionRef.current.session_id)
+      const roundMap: Record<string, InterviewRound> = {
+        introduction: "introduction",
+        cs_fundamentals: "cs_fundamentals",
+        system_design: "system_design",
+        coding: "coding",
+      }
+      setServerRound(roundMap[result.current_round] || "coding")
+
+      const skipMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `Moving on to the ${result.current_round.replace("_", " ")} round.`,
+      }
+      setMessages((prev) => [...prev, skipMessage])
+
+      updateStatus("responding")
+      await speakText(skipMessage.content)
+
+      if (!isActiveRef.current) {
+        updateStatus("idle")
+        return
+      }
+
+      updateStatus("thinking")
+
+      const assistantMessageId = (Date.now() + 1).toString()
+      let fullResponse = ""
+
+      const gen = streamChatMessage(result.ai_prompt, sessionRef.current.session_id)
+      for await (const token of gen) {
+        fullResponse += token
+        setMessages((prev) => {
+          const existing = prev.find((m) => m.id === assistantMessageId)
+          if (existing) {
+            return prev.map((m) =>
+              m.id === assistantMessageId ? { ...m, content: fullResponse } : m
+            )
+          }
+          return [...prev, { id: assistantMessageId, role: "assistant", content: fullResponse }]
+        })
+      }
+
+      if (!isActiveRef.current) {
+        updateStatus("idle")
+        return
+      }
+
+      updateStatus("responding")
+      await speakText(fullResponse)
+
+      if (!isActiveRef.current) {
+        updateStatus("idle")
+        return
+      }
+
+      updateStatus("ready_to_speak")
+    } catch (err) {
+      console.error("Failed to skip round:", err)
+      setError("Could not skip round. You may be at the last round.")
+    } finally {
+      setIsSkipping(false)
+    }
+  }, [speakText, updateStatus])
 
   const handleStartInterview = useCallback(
     async () => {
@@ -700,10 +801,8 @@ export default function InterviewPage() {
                 className="bg-muted/50 border border-border/50 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="python">Python</option>
-                <option value="javascript">JavaScript</option>
                 <option value="java">Java</option>
                 <option value="cpp">C++</option>
-                <option value="typescript">TypeScript</option>
               </select>
               <Code2 className="h-5 w-5 text-muted-foreground" />
             </>
@@ -800,10 +899,19 @@ export default function InterviewPage() {
                     <span className="text-sm text-muted-foreground">Listening... speak now</span>
                   </div>
                   {interimText && (
-                    <p className="text-sm text-muted-foreground italic max-w-md text-center">
+                    <p className="text-sm text-muted-foreground italic max-w-md text-center px-4">
                       &ldquo;{interimText}&rdquo;
                     </p>
                   )}
+                  <Button
+                    onClick={stopSpeaking}
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Mic className="h-4 w-4" />
+                    Stop Speaking
+                  </Button>
                 </div>
               ) : engineStatus === "thinking" ? (
                 <div className="flex flex-col items-center gap-3">
@@ -817,15 +925,27 @@ export default function InterviewPage() {
                 </div>
               ) : null}
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleEndInterview}
-                className="gap-2 text-destructive hover:text-destructive"
-              >
-                <PhoneOff className="h-4 w-4" />
-                End Interview
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSkipRound}
+                  disabled={isSkipping || currentRound === "coding"}
+                  className="gap-2 text-amber-500 hover:text-amber-400"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  {isSkipping ? "Skipping..." : "Skip Round"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEndInterview}
+                  className="gap-2 text-destructive hover:text-destructive"
+                >
+                  <PhoneOff className="h-4 w-4" />
+                  End Interview
+                </Button>
+              </div>
             </div>
           </div>
         </div>

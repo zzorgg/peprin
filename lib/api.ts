@@ -23,7 +23,7 @@ export async function createVoiceSession(
   return raw.data || raw
 }
 
-export async function* streamChatMessage(prompt: string, context = ""): AsyncGenerator<string> {
+export async function* streamChatMessage(prompt: string, sessionId = "", context = ""): AsyncGenerator<string> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30000)
 
@@ -31,7 +31,7 @@ export async function* streamChatMessage(prompt: string, context = ""): AsyncGen
     const res = await fetch(`${API_BASE_URL}/chat/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, context }),
+      body: JSON.stringify({ prompt, context, session_id: sessionId }),
       signal: controller.signal,
     })
     if (!res.ok) throw new Error("Failed to stream message")
@@ -137,5 +137,13 @@ export async function generateEvaluation(sessionId: string): Promise<EvaluationR
 export async function getEvaluation(sessionId: string): Promise<EvaluationResult> {
   const res = await fetch(`${API_BASE_URL}/sessions/${sessionId}/evaluate/`)
   if (!res.ok) throw new Error("Failed to get evaluation")
+  return res.json()
+}
+
+export async function skipRound(sessionId: string): Promise<{ current_round: string; message: string; ai_prompt: string }> {
+  const res = await fetch(`${API_BASE_URL}/sessions/${sessionId}/skip-round`, {
+    method: "POST",
+  })
+  if (!res.ok) throw new Error("Failed to skip round")
   return res.json()
 }
