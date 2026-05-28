@@ -133,12 +133,27 @@ export default function InterviewPage() {
     return () => cleanupAll()
   }, [cleanupAll])
 
+  const stripMarkdown = useCallback((text: string): string => {
+    return text
+      .replace(/\*\*\*(.*?)\*\*\*/g, "$1")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/__(.*?)__/g, "$1")
+      .replace(/_(.*?)_/g, "$1")
+      .replace(/`(.*?)`/g, "$1")
+      .replace(/#{1,6}\s?/g, "")
+      .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+      .replace(/^[-*+]\s/gm, "")
+      .replace(/^\d+\.\s/gm, "")
+  }, [])
+
   const speakText = useCallback(async (text: string): Promise<void> => {
     if (!text?.trim()) return
-    console.log("[speak] TTS:", text.slice(0, 80) + "...")
+    const cleanText = stripMarkdown(text)
+    console.log("[speak] TTS:", cleanText.slice(0, 80) + "...")
 
     try {
-      await speakWithElevenLabs(text)
+      await speakWithElevenLabs(cleanText)
       console.log("[speak] ElevenLabs done")
       return
     } catch (e) {
@@ -154,7 +169,7 @@ export default function InterviewPage() {
       window.speechSynthesis.cancel()
 
       setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(text)
+        const utterance = new SpeechSynthesisUtterance(cleanText)
         utterance.rate = 0.95
         utterance.pitch = 1.0
         utterance.volume = 1.0
@@ -168,7 +183,7 @@ export default function InterviewPage() {
         const timeoutId = setTimeout(() => {
           window.speechSynthesis.cancel()
           resolve()
-        }, Math.max(text.length * 80, 5000))
+        }, Math.max(cleanText.length * 80, 5000))
 
         let done = false
         utterance.onend = () => {
@@ -180,7 +195,7 @@ export default function InterviewPage() {
         window.speechSynthesis.speak(utterance)
       }, 100)
     })
-  }, [])
+  }, [stripMarkdown])
 
   const startRecognitionRef = useRef<() => void>(() => {})
 
