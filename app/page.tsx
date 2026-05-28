@@ -12,6 +12,67 @@ import { ScrubBarContainer, ScrubBarTrack, ScrubBarProgress, ScrubBarThumb } fro
 import { BarVisualizer } from "@/components/ui/bar-visualizer"
 import { ScrollRevealText } from "@/components/scroll-reveal-text"
 
+const codeExamples: Record<string, string[]> = {
+  cpp: [
+    "#include <peprin/sdk.h>",
+    "#include <peprin/voice.h>",
+    "",
+    "using namespace peprin;",
+    "",
+    "int main() {",
+    '  Peprin client("your-api-key");',
+    "  auto session = client.session({",
+    '    .personality = "senior-engineer",',
+    '    .topic = "system-design",',
+    '    .difficulty = "intermediate"',
+    "  }).start();",
+    "",
+    "  session.on_response([](const Answer& answer) {",
+    "    std::cout << answer.feedback;",
+    "  });",
+    "}",
+  ],
+  java: [
+    "import com.peprin.sdk.Peprin;",
+    "import com.peprin.voice.VoiceSession;",
+    "",
+    "public class Interview {",
+    "  public static void main(String[] args) {",
+    "    Peprin client = new Peprin(",
+    '      System.getenv("PEPRIN_API_KEY")',
+    "    );",
+    "",
+    "    VoiceSession session = client.session()",
+    '      .personality("senior-engineer")',
+    '      .topic("system-design")',
+    '      .difficulty("intermediate")',
+    "      .start();",
+    "",
+    "    session.onResponse(answer ->",
+    "      System.out.println(answer.getFeedback())",
+    "    );",
+    "  }",
+    "}",
+  ],
+  python: [
+    "from peprin import Peprin",
+    "from peprin.voice import VoiceSession",
+    "",
+    'client = Peprin(api_key=os.environ["PEPRIN_API_KEY"])',
+    "",
+    "session = client.session(",
+    '  personality="senior-engineer",',
+    '  topic="system-design",',
+    '  difficulty="intermediate"',
+    ").start()",
+    "",
+    "def on_response(answer):",
+    "  print(answer.feedback)",
+    "",
+    'session.on("response", on_response)',
+  ],
+}
+
 const companyLogos = [
   { name: "ElevenLabs", src: "/elevenlabs.svg" },
   { name: "Next.js", src: "/nextjs.svg" },
@@ -21,87 +82,10 @@ const companyLogos = [
 ]
 
 export default function Page() {
-  const [activeTab, setActiveTab] = useState("typescript")
-
-  const codeExamples = {
-    typescript: [
-      { line: '<span class="text-purple-400">import</span> { Peprin } <span class="text-purple-400">from</span> <span class="text-green-400">"@peprin/sdk"</span>' },
-      { line: '<span class="text-purple-400">import</span> { VoiceSession } <span class="text-purple-400">from</span> <span class="text-green-400">"@peprin/voice"</span>' },
-      { line: "" },
-      { line: '<span class="text-purple-400">const</span> client = <span class="text-purple-400">new</span> <span class="text-blue-400">Peprin</span>({ apiKey: process.env.PEPRIN_API_KEY })' },
-      { line: "  .<span class="text-blue-400">session</span>({" },
-      { line: '    personality: <span class="text-green-400">"senior-engineer"</span>,' },
-      { line: '    topic: <span class="text-green-400">"system-design"</span>,' },
-      { line: '    difficulty: <span class="text-green-400">"intermediate"</span>,' },
-      { line: "  })" },
-      { line: "" },
-      { line: '<span class="text-purple-400">const</span> session = <span class="text-purple-400">await</span> client.<span class="text-blue-400">start</span>()' },
-      { line: 'session.<span class="text-blue-400">on</span>(<span class="text-green-400">"response"</span>, (answer) <span class="text-purple-400">=&gt;</span> {' },
-      { line: "  console.<span class="text-blue-400">log</span>(answer.feedback)" },
-      { line: "})" },
-    ],
-    cpp: [
-      { line: '<span class="text-purple-400">#include</span> <span class="text-green-400">&lt;peprin/sdk.h&gt;</span>' },
-      { line: '<span class="text-purple-400">#include</span> <span class="text-green-400">&lt;peprin/voice.h&gt;</span>' },
-      { line: "" },
-      { line: '<span class="text-purple-400">using namespace</span> peprin;' },
-      { line: "" },
-      { line: '<span class="text-purple-400">int</span> <span class="text-blue-400">main</span>() {' },
-      { line: '  Peprin client(<span class="text-green-400">"your-api-key"</span>);' },
-      { line: "  <span class="text-purple-400">auto</span> session = client.<span class="text-blue-400">session</span>({" },
-      { line: '    .personality = <span class="text-green-400">"senior-engineer"</span>,' },
-      { line: '    .topic = <span class="text-green-400">"system-design"</span>,' },
-      { line: '    .difficulty = <span class="text-green-400">"intermediate"</span>' },
-      { line: "  }).<span class="text-blue-400">start</span>();" },
-      { line: "" },
-      { line: "  session.<span class="text-blue-400">on_response</span>([](<span class="text-purple-400">const</span> Answer& answer) {" },
-      { line: "    std::cout <span class="text-purple-400">&lt;&lt;</span> answer.feedback;" },
-      { line: "  });" },
-      { line: "}" },
-    ],
-    java: [
-      { line: '<span class="text-purple-400">import</span> com.peprin.sdk.Peprin;' },
-      { line: '<span class="text-purple-400">import</span> com.peprin.voice.VoiceSession;' },
-      { line: "" },
-      { line: '<span class="text-purple-400">public class</span> <span class="text-blue-400">Interview</span> {' },
-      { line: '  <span class="text-purple-400">public static void</span> <span class="text-blue-400">main</span>(String[] args) {' },
-      { line: '    Peprin client = <span class="text-purple-400">new</span> Peprin(' },
-      { line: '      System.<span class="text-blue-400">getenv</span>(<span class="text-green-400">"PEPRIN_API_KEY"</span>)' },
-      { line: "    );" },
-      { line: "" },
-      { line: "    VoiceSession session = client.<span class="text-blue-400">session</span>()" },
-      { line: '      .<span class="text-blue-400">personality</span>(<span class="text-green-400">"senior-engineer"</span>)' },
-      { line: '      .<span class="text-blue-400">topic</span>(<span class="text-green-400">"system-design"</span>)' },
-      { line: '      .<span class="text-blue-400">difficulty</span>(<span class="text-green-400">"intermediate"</span>)' },
-      { line: "      .<span class="text-blue-400">start</span>();" },
-      { line: "" },
-      { line: "    session.<span class="text-blue-400">onResponse</span>(answer <span class="text-purple-400">-&gt;</span>" },
-      { line: "      System.out.<span class="text-blue-400">println</span>(answer.getFeedback())" },
-      { line: "    );" },
-      { line: "  }" },
-      { line: "}" },
-    ],
-    python: [
-      { line: '<span class="text-purple-400">from</span> peprin <span class="text-purple-400">import</span> Peprin' },
-      { line: '<span class="text-purple-400">from</span> peprin.voice <span class="text-purple-400">import</span> VoiceSession' },
-      { line: "" },
-      { line: 'client = Peplin(api_key=<span class="text-green-400">os.environ</span>[<span class="text-green-400">"PEPRIN_API_KEY"</span>])' },
-      { line: "" },
-      { line: "session = client.<span class="text-blue-400">session</span>(" },
-      { line: '  personality=<span class="text-green-400">"senior-engineer"</span>,' },
-      { line: '  topic=<span class="text-green-400">"system-design"</span>,' },
-      { line: '  difficulty=<span class="text-green-400">"intermediate"</span>' },
-      { line: ").<span class="text-blue-400">start</span>()" },
-      { line: "" },
-      { line: '<span class="text-purple-400">def</span> <span class="text-blue-400">on_response</span>(answer):' },
-      { line: "  <span class="text-blue-400">print</span>(answer.feedback)" },
-      { line: "" },
-      { line: "session.<span class="text-blue-400">on</span>(<span class="text-green-400">"response"</span>, on_response)" },
-    ],
-  }
+  const [activeTab, setActiveTab] = useState("cpp")
 
   const tabs = [
-    { id: "typescript", label: "TypeScript" },
+    { id: "cpp", label: "C++" },
     { id: "cpp", label: "C++" },
     { id: "java", label: "Java" },
     { id: "python", label: "Python" },
@@ -329,9 +313,9 @@ export default function Page() {
               </Button>
 
               {/* Code Block */}
-              <div className="rounded-lg bg-muted/30 border border-border/30 p-4 font-mono text-xs leading-relaxed overflow-x-auto">
-                {codeExamples[activeTab as keyof typeof codeExamples].map((line, i) => (
-                  <div key={i} className="text-muted-foreground" dangerouslySetInnerHTML={{ __html: line.line || "&nbsp;" }} />
+              <div className="rounded-lg bg-muted/30 border border-border/30 p-4 font-mono text-xs leading-relaxed overflow-x-auto text-muted-foreground">
+                {codeExamples[activeTab].map((line, i) => (
+                  <div key={i}>{line || "\u00A0"}</div>
                 ))}
               </div>
             </div>
