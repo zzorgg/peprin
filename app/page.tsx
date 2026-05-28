@@ -226,11 +226,17 @@ export default function Page() {
 
         <div className="mt-16 overflow-hidden rounded-2xl border border-border/50 bg-card/50 p-2">
           <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/50">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center text-muted-foreground">
-                <p className="text-sm">Product demo video goes here</p>
-              </div>
-            </div>
+            <iframe
+              width="100%"
+              height="100%"
+              src="https://www.youtube.com/embed/b-krMFSE9WM?si=t3OcPQxiEPDS37gG"
+              title="Product demo video"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              className="absolute inset-0"
+            />
           </div>
         </div>
       </section>
