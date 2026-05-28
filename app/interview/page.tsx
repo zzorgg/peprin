@@ -825,6 +825,12 @@ export default function InterviewPage() {
         </div>
       </div>
 
+      <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center">
+        <span className="text-sm text-amber-600">
+          For the best experience, please use Chrome or Edge browser.
+        </span>
+      </div>
+
       <div className="flex-1 flex overflow-hidden">
         <div className={`flex flex-col ${showCodeEditor ? "flex-1 border-r border-border/50" : "flex-1"}`}>
           <div className="flex-1 relative">
