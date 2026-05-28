@@ -1,3 +1,5 @@
+import type { MutableRefObject } from "react"
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL!
 
 export interface VoiceSession {
@@ -62,7 +64,7 @@ export async function endSession(sessionId: string) {
   return res.json()
 }
 
-export async function speakWithElevenLabs(text: string): Promise<void> {
+export async function speakWithElevenLabs(text: string, audioRef?: MutableRefObject<HTMLAudioElement | null>): Promise<void> {
   const res = await fetch(
     `${API_BASE_URL}/voice/tts?${new URLSearchParams({ text })}`,
     { method: "POST" }
@@ -71,11 +73,39 @@ export async function speakWithElevenLabs(text: string): Promise<void> {
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
 
-  return new Promise<void>((resolve) => {
+  return new Promise<void>((resolve, reject) => {
     const audio = new Audio(url)
-    audio.onended = () => { URL.revokeObjectURL(url); resolve() }
-    audio.onerror = () => { URL.revokeObjectURL(url); resolve() }
-    audio.play().catch(() => { URL.revokeObjectURL(url); resolve() })
+    let settled = false
+
+    const settle = () => {
+      if (settled) return
+      settled = true
+      URL.revokeObjectURL(url)
+      if (audioRef && audioRef.current === audio) {
+        audioRef.current = null
+      }
+    }
+
+    if (audioRef) {
+      audioRef.current = audio
+    }
+
+    audio.onended = () => { settle(); resolve() }
+    audio.onerror = () => { settle(); resolve() }
+
+    const checkInterrupted = setInterval(() => {
+      if (audioRef && audioRef.current !== audio) {
+        settle()
+        resolve()
+        clearInterval(checkInterrupted)
+      }
+    }, 50)
+
+    audio.play().catch((err) => {
+      settle()
+      clearInterval(checkInterrupted)
+      reject(err)
+    })
   })
 }
 

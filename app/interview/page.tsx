@@ -81,6 +81,7 @@ export default function InterviewPage() {
   const [isExecuting, setIsExecuting] = useState(false)
   const [serverRound, setServerRound] = useState<InterviewRound>("introduction")
   const [isSkipping, setIsSkipping] = useState(false)
+  const [showEndModal, setShowEndModal] = useState(false)
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
@@ -89,6 +90,7 @@ export default function InterviewPage() {
   const engineStatusRef = useRef<EngineStatus>("idle")
   const restartCountRef = useRef(0)
   const accumulatedTranscriptRef = useRef("")
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
 
   const assistantMessageCount = useMemo(
     () => messages.filter((m) => m.role === "assistant").length,
@@ -119,6 +121,11 @@ export default function InterviewPage() {
     }
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel()
+    }
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current.src = ""
+      currentAudioRef.current = null
     }
   }, [])
 
@@ -153,7 +160,9 @@ export default function InterviewPage() {
     console.log("[speak] TTS:", cleanText.slice(0, 80) + "...")
 
     try {
-      await speakWithElevenLabs(cleanText)
+      if (!isActiveRef.current) return
+      await speakWithElevenLabs(cleanText, currentAudioRef)
+      if (!isActiveRef.current) return
       console.log("[speak] ElevenLabs done")
       return
     } catch (e) {
@@ -169,6 +178,7 @@ export default function InterviewPage() {
       window.speechSynthesis.cancel()
 
       setTimeout(() => {
+        if (!isActiveRef.current) { resolve(); return }
         const utterance = new SpeechSynthesisUtterance(cleanText)
         utterance.rate = 0.95
         utterance.pitch = 1.0
@@ -495,10 +505,19 @@ export default function InterviewPage() {
 
   const handleEndInterview = useCallback(async () => {
     if (!sessionRef.current?.session_id) return
+    setShowEndModal(false)
     cleanupAll()
     try { await endSession(sessionRef.current.session_id) } catch {}
     router.push(`/results?session=${sessionRef.current.session_id}`)
   }, [cleanupAll, router])
+
+  const requestEndInterview = useCallback(() => {
+    setShowEndModal(true)
+  }, [])
+
+  const cancelEndInterview = useCallback(() => {
+    setShowEndModal(false)
+  }, [])
 
   const handleSkipRound = useCallback(async () => {
     if (!sessionRef.current?.session_id) return
@@ -960,7 +979,7 @@ export default function InterviewPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleEndInterview}
+                  onClick={requestEndInterview}
                   className="gap-2 text-destructive hover:text-destructive"
                 >
                   <PhoneOff className="h-4 w-4" />
@@ -1040,6 +1059,31 @@ export default function InterviewPage() {
           </motion.div>
         )}
       </div>
+
+      {showEndModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-lg font-semibold mb-2">End Interview?</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Are you sure you want to end this interview? You will be redirected to the results page.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={cancelEndInterview}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleEndInterview}
+              >
+                End Interview
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
